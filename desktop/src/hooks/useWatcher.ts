@@ -34,13 +34,13 @@ export function useWatcher() {
     }
   }, [activeWatches.length]);
 
-  const startWatch = useCallback(async (connectorId: string, target: string) => {
+  const startWatch = useCallback(async (connectorId: string, target: string, interval?: number) => {
     setWatcherState('STARTING');
     try {
       const res = await fetch(`/api/connectors/${connectorId}/watch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target }),
+        body: JSON.stringify({ target, interval: interval || 5 }),
       });
       if (res.ok) {
         const data = await res.json();

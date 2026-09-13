@@ -45,6 +45,9 @@ _active_watches: Dict[str, WatchHandle] = {}
 _ws_clients: Set[WebSocket] = set()
 _ws_polling_task: Optional[asyncio.Task] = None
 
+# Global in-memory activity log for Task 14
+_activity_log: List[Dict[str, Any]] = []
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -178,14 +181,21 @@ async def _poll_watches_loop():
                     for ev in new_events:
                         ts = ev.get("timestamp")
                         ts_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
-                        events_to_broadcast.append({
+                        
+                        event_payload = {
                             "watch_id": watch_id,
                             "connector": ev.get("connector"),
                             "event_type": ev.get("event_type"),
                             "summary": ev.get("summary"),
                             "raw": ev.get("raw", {}),
                             "timestamp": ts_str,
-                        })
+                        }
+                        events_to_broadcast.append(event_payload)
+                        
+                        # Store in global activity log, keep last 1000
+                        _activity_log.insert(0, event_payload)
+                        if len(_activity_log) > 1000:
+                            _activity_log.pop()
                 except Exception as e:
                     logger.error(f"Error polling watch {watch_id}: {e}")
 
@@ -422,6 +432,8 @@ def start_watch(connector_id: str, body: Dict[str, str] = Body(...)):
         raise APIBridgeException("CONNECTOR_NOT_FOUND", f"Unknown connector: {connector_id}", 404)
 
     target = body.get("target")
+    interval = body.get("interval", 5) # Default 5s if not provided
+
     if not target:
         raise APIBridgeException("BAD_REQUEST", "Field 'target' is required", 400)
 
@@ -440,17 +452,6 @@ def start_watch(connector_id: str, body: Dict[str, str] = Body(...)):
         raise APIBridgeException("CONNECTOR_API_ERROR", f"Watch not supported by {connector_id}", 400)
     except Exception as e:
         raise APIBridgeException("CONNECTOR_API_ERROR", f"Failed to start watch: {str(e)}", 500)
-
-
-@app.post("/api/connectors/{connector_id}/generate-widgets")
-async def generate_widgets(connector_id: str):
-    # Analyze live connector stats or fallback to dynamic layout configuration
-    widgets = [
-        {"type": "metric_card", "title": "Live Throughput", "value": "1.2k req/s", "trend": "+12%"},
-        {"type": "gauge", "title": "Resource Saturation", "value": 44.5, "unit": "%"},
-        {"type": "line_chart", "title": "Latency Distribution", "data": [14, 18, 12, 22, 16]}
-    ]
-    return {"connector_id": connector_id, "widgets": widgets}
 
 
 @app.delete("/api/connectors/{connector_id}/watch")
@@ -491,6 +492,21 @@ def poll_active_watches():
             logger.error(f"Error polling watch {watch_id}: {e}")
 
     return {"events": all_events}
+
+
+@app.get("/api/activity")
+def get_activity_log(q: Optional[str] = Query(None), connector: Optional[str] = Query(None)):
+    """Return historical events from the in-memory activity log."""
+    results = _activity_log
+    
+    if connector and connector.lower() != "all":
+        results = [ev for ev in results if ev.get("connector", "").lower() == connector.lower()]
+        
+    if q:
+        q_lower = q.lower()
+        results = [ev for ev in results if q_lower in ev.get("summary", "").lower() or q_lower in ev.get("event_type", "").lower()]
+        
+    return {"events": results}
 
 
 @app.websocket("/ws/events")

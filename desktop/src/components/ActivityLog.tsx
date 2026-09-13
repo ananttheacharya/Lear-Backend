@@ -1,14 +1,44 @@
-import { useState } from 'react';
-import { Activity, Filter, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, Filter, Clock, Search } from 'lucide-react';
 import useWatcher from '../hooks/useWatcher';
 
 export default function ActivityLog() {
-  const { events } = useWatcher();
+  const { events: liveEvents } = useWatcher();
   const [filter, setFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [historyEvents, setHistoryEvents] = useState<any[]>([]);
 
-  const filteredEvents = events.filter(ev => {
-    if (filter === 'all') return true;
-    return (ev.connector || '').toLowerCase() === filter.toLowerCase();
+  useEffect(() => {
+    fetch('/api/activity')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.events) {
+          setHistoryEvents(data.events);
+        }
+      })
+      .catch(e => console.error("Error fetching activity log:", e));
+  }, []);
+
+  // Merge history with live events, avoiding duplicates by watch_id/timestamp
+  const mergedEvents = [...liveEvents];
+  for (const he of historyEvents) {
+    if (!mergedEvents.find(le => le.timestamp === he.timestamp && le.watch_id === he.watch_id)) {
+      mergedEvents.push(he);
+    }
+  }
+
+  // Sort by timestamp descending
+  mergedEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const filteredEvents = mergedEvents.filter(ev => {
+    if (filter !== 'all' && (ev.connector || '').toLowerCase() !== filter.toLowerCase()) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchSummary = (ev.summary || '').toLowerCase().includes(q);
+      const matchType = (ev.event_type || '').toLowerCase().includes(q);
+      if (!matchSummary && !matchType) return false;
+    }
+    return true;
   });
 
   return (
@@ -21,8 +51,20 @@ export default function ActivityLog() {
           </p>
         </div>
 
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search events, errors, keywords..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-surface border border-border-subtle rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:border-accent outline-none transition-colors"
+          />
+        </div>
+
         {/* Filter buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
           <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
             <Filter size={12} /> Filter:
           </span>
@@ -40,6 +82,7 @@ export default function ActivityLog() {
             </button>
           ))}
         </div>
+      </div>
       </div>
 
       <div className="glass-panel rounded-2xl p-6 border border-border-subtle shadow-xl">
