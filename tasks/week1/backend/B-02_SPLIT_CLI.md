@@ -1,6 +1,6 @@
 # B-02 — Split `cli.py` into Command Modules
 
-**Owner:** Aryan
+**Owner:** Anant
 **Priority:** P1
 **Status:** ⬜ Not Started
 **Estimated effort:** 1–2 days

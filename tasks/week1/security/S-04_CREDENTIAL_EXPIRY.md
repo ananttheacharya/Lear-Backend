@@ -1,6 +1,6 @@
 # S-04 — Credential Rotation and Expiry Detection
 
-**Owner:** Aryan
+**Owner:** Agrim
 **Priority:** P1
 **Status:** ⬜ Not Started
 **Estimated effort:** 2 days

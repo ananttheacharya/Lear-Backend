@@ -1,6 +1,6 @@
 # S-03 — CORS Lockdown
 
-**Owner:** Parv
+**Owner:** Agrim
 **Priority:** P0
 **Status:** ⬜ Not Started
 **Estimated effort:** 0.5 day

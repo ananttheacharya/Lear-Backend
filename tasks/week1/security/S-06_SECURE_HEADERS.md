@@ -1,6 +1,6 @@
 # S-06 — Secure HTTP Headers Middleware
 
-**Owner:** Parv
+**Owner:** Avi
 **Priority:** P1
 **Status:** ⬜ Not Started
 **Estimated effort:** 0.5 day

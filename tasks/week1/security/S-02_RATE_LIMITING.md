@@ -1,6 +1,6 @@
 # S-02 — Rate Limiting Middleware
 
-**Owner:** Parv
+**Owner:** Agrim
 **Priority:** P0
 **Status:** ⬜ Not Started
 **Estimated effort:** 1–2 days
