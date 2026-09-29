@@ -2,7 +2,7 @@
 
 **Owner:** Avi
 **Priority:** P0
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Estimated effort:** 2 days
 **Depends on:** Nothing (start day 1)
 **Blocks:** U-02, U-03, U-04 (all UI work depends on tokens existing)
@@ -11,7 +11,7 @@
 
 ## Objective
 
-Audit the current `in1x.css` and define a comprehensive design token system covering: spacing scale, typography scale, color palette, elevation/shadow system, border-radius scale, and motion/easing tokens. Every component should reference tokens via CSS custom properties — no raw values.
+Audit the current `index.css` and define a comprehensive design token system covering: spacing scale, typography scale, color palette, elevation/shadow system, border-radius scale, and motion/easing tokens. Every component should reference tokens via CSS custom properties — no raw values.
 
 ---
 
@@ -262,37 +262,37 @@ After applying tokens, take the same screenshots. The visual diff should be mini
 ## Checklist
 
 ### Audit
-- [ ] Scan all 25 components for hardcoded color values
-- [ ] Scan all components for hardcoded spacing (px values)
-- [ ] Scan all components for hardcoded font sizes
-- [ ] Scan all components for hardcoded border-radius values
-- [ ] Scan all components for hardcoded shadows
-- [ ] Document all unique values found
+- [x] Scan all 25 components for hardcoded color values
+- [x] Scan all components for hardcoded spacing (px values)
+- [x] Scan all components for hardcoded font sizes
+- [x] Scan all components for hardcoded border-radius values
+- [x] Scan all components for hardcoded shadows
+- [x] Document all unique values found
 
 ### Token Definition
-- [ ] Create `desktop/src/design-tokens.css`
-- [ ] Define brand color palette (primary + variants)
-- [ ] Define neutral color scale (10+ steps)
-- [ ] Define semantic colors (success, warning, error, info)
-- [ ] Define border colors
-- [ ] Define font family tokens (Inter, Outfit, JetBrains Mono)
-- [ ] Define font size scale
-- [ ] Define font weight tokens
-- [ ] Define line height tokens
-- [ ] Define spacing scale
-- [ ] Define border-radius scale
-- [ ] Define elevation/shadow system
-- [ ] Define motion/easing tokens
-- [ ] Define z-index scale
-- [ ] Import Google Fonts
+- [x] Create `desktop/src/design-tokens.css`
+- [x] Define brand color palette (primary + variants)
+- [x] Define neutral color scale (10+ steps)
+- [x] Define semantic colors (success, warning, error, info)
+- [x] Define border colors
+- [x] Define font family tokens (Inter, Outfit, JetBrains Mono)
+- [x] Define font size scale
+- [x] Define font weight tokens
+- [x] Define line height tokens
+- [x] Define spacing scale
+- [x] Define border-radius scale
+- [x] Define elevation/shadow system
+- [x] Define motion/easing tokens
+- [x] Define z-index scale
+- [x] Import Google Fonts
 
 ### Migration
-- [ ] Import `design-tokens.css` in `index.css`
-- [ ] Update existing `@theme` block to reference tokens
-- [ ] Take before screenshots (Dashboard, Sidebar, Chat, Settings, Integrations)
-- [ ] Migrate hardcoded values in components to token references
-- [ ] Take after screenshots — visual diff should be minimal
-- [ ] Verify dark mode works with all tokens
+- [x] Import `design-tokens.css` in `index.css`
+- [x] Update existing `@theme` block to reference tokens
+- [x] Take before screenshots (Dashboard, Sidebar, Chat, Settings, Integrations)
+- [x] Migrate hardcoded values in components to token references
+- [x] Take after screenshots — visual diff should be minimal
+- [x] Verify dark mode works with all tokens
 
 ---
 
@@ -312,8 +312,8 @@ After applying tokens, take the same screenshots. The visual diff should be mini
 
 ## Exit Criteria
 
-- [ ] **`design-tokens.css` file exists** with all tokens as CSS custom properties
-- [ ] **Every component references tokens, not raw values** — grep for hardcoded `#hex` values returns 0 hits in component files (excluding token definitions)
-- [ ] **Visual diff: before/after screenshots** show no visible regression
-- [ ] **Google Fonts loaded** — Inter, Outfit, JetBrains Mono
-- [ ] **All 25 components use the token system**
+- [x] **`design-tokens.css` file exists** with all tokens as CSS custom properties
+- [x] **Every component references tokens, not raw values** — grep for hardcoded `#hex` values returns 0 hits in component files (excluding token definitions)
+- [x] **Visual diff: before/after screenshots** show no visible regression
+- [x] **Google Fonts loaded** — Inter, Outfit, JetBrains Mono
+- [x] **All 25 components use the token system**
