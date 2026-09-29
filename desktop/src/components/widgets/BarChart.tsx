@@ -23,7 +23,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   data = [],
   label,
   unit = '',
-  color = '#FF3A89',
+  color = 'var(--color-brand-primary)',
   height = 170,
   onExpand,
 }) => {
@@ -202,7 +202,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   rx={4}
                   ry={4}
                   fill={`url(#barGrad-${idx})`}
-                  stroke={isHovered ? '#FFFFFF' : barColor}
+                  stroke={isHovered ? 'var(--color-neutral-50)' : barColor}
                   strokeWidth={isHovered ? 1.5 : 0}
                   initial={{ height: 0, y: chartBaseY }}
                   animate={{ height: barH, y: barY }}
@@ -218,7 +218,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                     textAnchor="middle"
                     fontSize="10"
                     fontWeight="bold"
-                    fill={isHovered ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
+                    fill={isHovered ? 'var(--color-neutral-50)' : 'rgba(255,255,255,0.7)'}
                     fontFamily="monospace"
                   >
                     {item.value >= 1000 ? `${(item.value / 1000).toFixed(1)}k` : item.value}
@@ -231,7 +231,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   y={chartBaseY + 16}
                   textAnchor="middle"
                   fontSize="10"
-                  fill={isHovered ? '#FF3A89' : 'rgba(255,255,255,0.5)'}
+                  fill={isHovered ? 'var(--color-brand-primary)' : 'rgba(255,255,255,0.5)'}
                   fontWeight={isHovered ? '600' : '400'}
                   className="transition-colors select-none"
                 >

@@ -50,7 +50,7 @@ export default function StepNotifications({ onNext }: { onNext: (data: any) => v
       <div className="flex gap-4">
         <button
           onClick={() => onNext({ notifications: selected })}
-          className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-[#2da36c] transition-colors"
+          className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-success-dark transition-colors"
         >
           {selected.length === 0 ? 'Skip for now' : 'Continue'} <ChevronRight size={20} />
         </button>

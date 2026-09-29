@@ -21,11 +21,11 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
   const strokeDashoffset = circumference - (safeValue / 100) * circumference;
 
   // Determine color based on threshold
-  let strokeColor = '#FF3A89';
+  let strokeColor = 'var(--color-brand-primary)';
   if (safeValue > 70 && safeValue <= 85) {
-    strokeColor = '#F59E0B'; // Amber
+    strokeColor = 'var(--color-warning)'; // Amber
   } else if (safeValue > 85) {
-    strokeColor = '#F43F5E'; // Rose / Red
+    strokeColor = 'var(--color-error-rose)'; // Rose / Red
   }
 
   return (
@@ -38,9 +38,9 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
         >
           <defs>
             <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FF3A89" />
-              <stop offset="70%" stopColor="#F59E0B" />
-              <stop offset="100%" stopColor="#F43F5E" />
+              <stop offset="0%" stopColor="var(--color-brand-primary)" />
+              <stop offset="70%" stopColor="var(--color-warning)" />
+              <stop offset="100%" stopColor="var(--color-error-rose)" />
             </linearGradient>
           </defs>
 
@@ -48,7 +48,7 @@ export const MetricGauge: React.FC<MetricGaugeProps> = ({
           <path
             d={`M ${strokeWidth / 2},${size / 2} A ${radius},${radius} 0 0,1 ${size - strokeWidth / 2},${size / 2}`}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.08)"
+            stroke="var(--color-border-subtle)"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
           />

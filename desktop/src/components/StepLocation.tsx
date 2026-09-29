@@ -53,7 +53,7 @@ export default function StepLocation({ onNext }: { onNext: (data: any) => void }
       <button
         disabled={!selected}
         onClick={() => onNext({ location: selected })}
-        className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-[#2da36c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-success-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Continue <ChevronRight size={20} />
       </button>

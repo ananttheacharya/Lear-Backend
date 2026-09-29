@@ -140,9 +140,9 @@ export const ConnectorForm: React.FC<ConnectorFormProps> = ({
           <div className="flex items-center gap-3">
             <div
               className="p-3 rounded-xl border border-white/10"
-              style={{ backgroundColor: `${connector.color || '#FF3A89'}20` }}
+              style={{ backgroundColor: connector.color ? `${connector.color}20` : 'var(--color-brand-primary-muted)' }}
             >
-              <Cloud size={24} style={{ color: connector.color || '#FF3A89' }} />
+              <Cloud size={24} style={{ color: connector.color || 'var(--color-brand-primary)' }} />
             </div>
             <div>
               <div className="flex items-center gap-2">

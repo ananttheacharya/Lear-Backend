@@ -1,24 +1,59 @@
+@import "./design-tokens.css";
 @import "tailwindcss";
 
 @theme {
-  --color-background: #080B11;
-  --color-surface: #0E131F;
-  --color-surface-elevated: #151C2C;
-  --color-accent: #FF3A89;
-  --color-accent-light: #FF66A5;
-  --color-accent-glow: rgba(255, 58, 137, 0.25);
-  --color-cyan: #06B6D4;
-  --color-amber: #F59E0B;
-  --color-rose: #F43F5E;
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-hover: rgba(255, 255, 255, 0.16);
+  --color-background: var(--color-neutral-900);
+  --color-surface: var(--color-neutral-800);
+  --color-surface-elevated: var(--color-neutral-700);
+  --color-accent: var(--color-brand-primary);
+  --color-accent-light: var(--color-brand-primary-light);
+  --color-accent-dark: var(--color-brand-primary-dark);
+  --color-accent-glow: var(--color-brand-primary-glow);
+  --color-cyan: var(--color-info);
+  --color-amber: var(--color-warning);
+  --color-rose: var(--color-error-rose);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-hover: var(--color-border-hover);
+
+  --color-brand: var(--color-brand-primary);
+  --color-brand-light: var(--color-brand-primary-light);
+  --color-brand-dark: var(--color-brand-primary-dark);
+  --color-brand-glow: var(--color-brand-primary-glow);
+  --color-brand-muted: var(--color-brand-primary-muted);
+
+  --color-neutral-950: var(--color-neutral-950);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-neutral-850: var(--color-neutral-850);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-750: var(--color-neutral-750);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-650: var(--color-neutral-650);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-50: var(--color-neutral-50);
+
+  --color-neon-cyan: var(--color-info-cyan-glow);
+  --color-slate-border: var(--color-border-slate);
+  --color-success-dark: var(--color-success-dark);
+  --color-slack: var(--color-brand-slack);
+  --color-slack-gold: var(--color-brand-slack-gold);
+  --color-slack-rose: var(--color-brand-slack-rose);
+  --color-info-sky: var(--color-info-sky);
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 @layer base {
   body {
     background-color: var(--color-background);
-    color: #F3F4F6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
+    color: var(--color-neutral-100);
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -34,7 +69,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.12);
-    border-radius: 9999px;
+    border-radius: var(--radius-full);
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.25);
@@ -45,14 +80,14 @@
   background: rgba(14, 19, 31, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--color-border-default);
 }
 
 .glass-card {
   background: rgba(20, 27, 44, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--color-border-default);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .glass-card:hover {
@@ -76,5 +111,5 @@
 }
 
 .pulse-radar {
-  animation: pulse-radar 2s infinite cubic-bezier(0.45, 0, 0.55, 1);
+  animation: pulse-radar 2s infinite var(--ease-in-out);
 }

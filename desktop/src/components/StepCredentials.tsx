@@ -102,7 +102,7 @@ export default function StepCredentials({ onComplete, config }: { onComplete: ()
           <button 
             onClick={testConnection}
             disabled={testing || config.services?.length === 0}
-            className="text-accent hover:text-[#2da36c] font-medium flex items-center gap-2 disabled:opacity-50"
+            className="text-accent hover:text-success-dark font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {testing && <Loader2 size={16} className="animate-spin" />}
             Test Connections
@@ -119,7 +119,7 @@ export default function StepCredentials({ onComplete, config }: { onComplete: ()
 
       <button
         onClick={onComplete}
-        className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-[#2da36c] transition-colors"
+        className="flex items-center gap-2 px-8 py-4 rounded-full bg-accent text-background font-semibold text-lg hover:bg-success-dark transition-colors"
       >
         Finish Setup <ChevronRight size={20} />
       </button>
