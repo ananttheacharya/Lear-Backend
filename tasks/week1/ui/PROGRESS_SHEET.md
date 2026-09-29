@@ -82,8 +82,8 @@ This report records the UI journey from the original baseline through the latest
 |---|---|---|
 | U-01 | Complete / preserved | Existing token layer remains active; new styles use it. |
 | U-02 | Implemented foundation | Sidebar collapse, persistence, accessibility and keyboard navigation are present. |
-| U-03 | Partially implemented | Dashboard presentation is upgraded; component decomposition and dashboard-specific tests remain. |
-| U-04 | Foundation implemented | Nine typed primitives and shared CSS are present in `desktop/src/components/ui/`. |
+| U-03 | Core extraction implemented | KPI presentation is now extracted into `dashboard/KPIStrip.tsx`, receives props only, uses UI primitives, and has dedicated tests. Remaining deeper Activity/QuickActions/Connector extraction is explicitly tracked. |
+| U-04 | Implemented foundation + preview | Nine typed primitives, shared CSS, exports and a development-only `/preview` route are present. `KPIStrip` consumes `Card` and `Skeleton` as a production proof of concept. |
 | Chat console | Presentation layer implemented | `Chatbot.tsx` and `index.css` contain the new console treatment. |
 | Audio | Not implemented | Intentionally 0 assets until architecture/licensing/accessibility are approved. |
 
@@ -96,6 +96,10 @@ This report records the UI journey from the original baseline through the latest
 - No `.env` secrets, credentials, `node_modules`, build output or cache files committed.
 - Existing API paths and backend data contracts were not changed by the UI work.
 - Existing bundle-size warning remains visible and is recorded rather than hidden.
+
+## Audio architecture
+
+`tasks/week1/ui/audio/README.md` defines the approved boundary before assets: opt-in/muted default, licensing manifest, lazy loading, autoplay policy, global mute, reduced-audio preference, semantic events and tests. No assets are shipped.
 
 ## Remaining work
 
