@@ -307,7 +307,7 @@ export default function Dashboard({
   const errorPct = (errorCount / totalEntities) * 100;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="lear-dashboard p-8 max-w-7xl mx-auto space-y-8">
       {/* 1. Mission Control Header */}
       <div className="flex flex-wrap justify-between items-start gap-4 pb-2 border-b border-border-subtle/60">
         <div>

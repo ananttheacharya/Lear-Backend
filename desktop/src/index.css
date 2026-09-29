@@ -138,3 +138,14 @@
 .lear-shell { isolation: isolate; background: var(--color-neutral-950); }
 .lear-shell::before { content:""; position:absolute; inset:0; pointer-events:none; z-index:-1; background: radial-gradient(circle at 78% 8%, var(--color-brand-primary-muted), transparent 28%), radial-gradient(circle at 32% 100%, var(--color-info-muted), transparent 24%); opacity:.7; }
 .lear-shell__main { scrollbar-gutter: stable; }
+
+
+/* Dashboard presentation layer: restrained, data-led motion only. */
+.lear-dashboard { animation: lear-dashboard-enter var(--duration-slow) var(--ease-out) both; }
+.lear-dashboard > * { position: relative; }
+.lear-dashboard .glass-panel { box-shadow: var(--shadow-card); }
+.lear-dashboard .glass-panel::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.035) 45%, transparent 70%); transform: translateX(-110%); transition: transform 700ms var(--ease-out); }
+.lear-dashboard .glass-panel:hover::after { transform: translateX(110%); }
+.lear-dashboard .glass-panel:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg), 0 0 22px var(--color-brand-primary-muted); }
+@keyframes lear-dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .lear-dashboard { animation: none; } .lear-dashboard .glass-panel, .lear-dashboard .glass-panel::after { transition: none; transform: none; } }
