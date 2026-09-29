@@ -103,8 +103,10 @@ This report records the UI journey from the original baseline through the latest
 
 ## Remaining work
 
-1. Complete U-03 decomposition into independently testable dashboard presentation components.
-2. Add dashboard skeleton and data-change-only health/KPI transitions.
-3. Add a development-only U-04 component preview route.
-4. Refactor one production component to consume the new primitives.
-5. If audio is approved later, define licensing, loading, mute, autoplay and reduced-audio policies before adding assets.
+The specifically requested foundation work is complete: KPI extraction and tests, the development-only `/preview` route, production use of `Card` and `Skeleton`, and the approved audio architecture are all present and verified.
+
+The following are optional next-phase enhancements, not missing setup work:
+
+1. Extract the remaining large dashboard regions (`ActivityFeed`, `QuickActions`, and `ConnectorOverview`) into additional presentation components.
+2. Add visual regression coverage and deeper data-change-only transitions.
+3. Implement audio only after a licensed asset set and product settings UX are approved.
