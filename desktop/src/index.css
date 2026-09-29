@@ -113,3 +113,28 @@
 .pulse-radar {
   animation: pulse-radar 2s infinite var(--ease-in-out);
 }
+
+/* Lear workspace shell — one restrained motion language shared by navigation and views. */
+.lear-sidebar {
+  width: 16rem;
+  flex: 0 0 16rem;
+  transition: width var(--duration-normal) var(--ease-out), flex-basis var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) var(--ease-out);
+  position: relative;
+  z-index: var(--z-sticky);
+}
+.lear-sidebar--collapsed { width: 4.5rem; flex-basis: 4.5rem; box-shadow: 10px 0 32px rgba(0,0,0,.16); }
+.lear-sidebar__label { opacity: 1; transform: translateX(0); transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-normal) var(--ease-out); white-space: nowrap; overflow: hidden; }
+.lear-sidebar--collapsed .lear-sidebar__label { opacity: 0; transform: translateX(-0.5rem); pointer-events: none; width: 0; }
+.lear-sidebar--collapsed .lear-sidebar__header { padding-inline: .75rem; }
+.lear-sidebar--collapsed .lear-sidebar__connection { display: none; }
+.lear-sidebar--collapsed .lear-nav-item { justify-content: center; padding-inline: .75rem; }
+.lear-sidebar--collapsed .lear-nav-item > svg { margin: 0; }
+.lear-sidebar__toggle { display:flex; align-items:center; justify-content:center; gap:.5rem; min-height:2.25rem; margin:.75rem; padding:.5rem; color:var(--color-neutral-400); border:1px solid var(--color-border-default); border-radius:var(--radius-lg); background:rgba(255,255,255,.02); font:500 var(--text-xs) var(--font-sans); transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out); }
+.lear-sidebar__toggle:hover { color:var(--color-brand-primary-light); border-color:var(--color-border-focus); background:var(--color-brand-primary-muted); }
+.lear-nav-item { min-height: 2.25rem; }
+.lear-nav-item:focus-visible, .lear-sidebar__toggle:focus-visible { outline:2px solid var(--color-brand-primary-light); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { .lear-sidebar, .lear-sidebar__label, .lear-sidebar__toggle, .lear-nav-item { transition-duration: 1ms !important; } }
+
+.lear-shell { isolation: isolate; background: var(--color-neutral-950); }
+.lear-shell::before { content:""; position:absolute; inset:0; pointer-events:none; z-index:-1; background: radial-gradient(circle at 78% 8%, var(--color-brand-primary-muted), transparent 28%), radial-gradient(circle at 32% 100%, var(--color-info-muted), transparent 24%); opacity:.7; }
+.lear-shell__main { scrollbar-gutter: stable; }

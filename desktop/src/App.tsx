@@ -79,10 +79,10 @@ function AppContent() {
       {!isSetupComplete ? (
         <Wizard onComplete={handleSetupComplete} />
       ) : (
-        <div className="flex h-screen w-full relative z-10 overflow-hidden bg-background">
+        <div className="lear-shell flex h-screen w-full relative z-10 overflow-hidden bg-background">
           <Sidebar />
 
-          <main className="flex-1 overflow-y-auto">
+          <main className="lear-shell__main flex-1 overflow-y-auto">
             <ErrorBoundary fallbackTitle="View Error" fallbackMessage="There was a problem rendering this section.">
               {activeTab === 'dashboard' && (
                 <Dashboard

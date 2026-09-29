@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Home, FolderGit2, Blocks, Bell, Settings, ChevronDown, Sparkles, Activity, Plus, Layers, Eye, X } from 'lucide-react';
+import { Home, FolderGit2, Blocks, Bell, Settings, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Activity, Plus, Layers, Eye, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLear } from '../context/LearContext';
 
@@ -31,7 +31,12 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
   const unreadCount = props.unreadNotificationsCount ?? context.unreadCount;
 
   const [showProjectsDropdown, setShowProjectsDropdown] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('lear_sidebar_collapsed') === 'true');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('lear_sidebar_collapsed', String(collapsed));
+  }, [collapsed]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -99,9 +104,9 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
   };
 
   return (
-    <aside className="w-64 bg-background border-r border-border-subtle flex flex-col h-full select-none">
+    <aside className={`lear-sidebar ${collapsed ? 'lear-sidebar--collapsed' : ''} bg-background border-r border-border-subtle flex flex-col h-full select-none`}>
       {/* Brand Header */}
-      <div className="p-5 pb-3">
+      <div className="p-5 pb-3 lear-sidebar__header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent to-pink-400 flex items-center justify-center shadow-[0_0_15px_rgba(255,58,137,0.3)]">
@@ -109,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-lg font-bold tracking-tight text-white">Lear</h1>
+                <h1 className="lear-sidebar__label text-lg font-bold tracking-tight text-white">Lear</h1>
                 <span className="text-[10px] px-1.5 py-0.2 bg-accent/20 text-accent rounded font-mono font-semibold">
                   v{context.appVersion}
                 </span>
@@ -119,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
                   className={`w-2 h-2 rounded-full transition-colors ${getStatusDot(context.aggregateStatus)}`}
                 />
               </div>
-              <p className="text-[10px] text-gray-500 font-mono">Infrastructure Intelligence</p>
+              <p className="lear-sidebar__label text-[10px] text-gray-500 font-mono">Infrastructure Intelligence</p>
             </div>
           </div>
 
@@ -127,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
           {context.connectedCount > 0 && (
             <div
               title={`${context.connectedCount} configured backend connectors`}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border-subtle text-[10px] font-mono text-gray-400"
+              className="lear-sidebar__connection flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border-subtle text-[10px] font-mono text-gray-400"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
               <span>{context.connectedCount}</span>
@@ -136,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
         </div>
 
         {/* Project Selector (B1, B4, B5, B6) */}
-        <div className="mt-5 relative" ref={dropdownRef}>
+        <div className="mt-5 relative lear-sidebar__label" ref={dropdownRef}>
           <button
             onClick={() => setShowProjectsDropdown(prev => !prev)}
             className="w-full p-2.5 rounded-xl bg-surface/60 hover:bg-surface border border-border-subtle flex items-center justify-between text-xs text-left cursor-pointer transition-colors"
@@ -239,8 +244,8 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1">
+      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto" aria-label="Primary navigation">
+        <div className="lear-sidebar__label text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1">
           Menu
         </div>
         {navItems.map((item) => {
@@ -255,14 +260,16 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
                 }
                 setActiveTab(item.id);
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all relative ${
+              aria-current={isActive ? 'page' : undefined}
+              title={collapsed ? item.label : undefined}
+              className={`lear-nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all relative ${
                 isActive
                   ? 'bg-accent/10 text-accent font-semibold'
                   : 'text-gray-400 hover:bg-surface hover:text-white'
               }`}
             >
               <Icon size={16} className={isActive ? 'text-accent' : 'text-gray-500'} />
-              <span className="flex-1 text-left">{item.label}</span>
+              <span className="lear-sidebar__label flex-1 text-left">{item.label}</span>
               {item.badge !== undefined && item.badge > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-accent/20 text-accent text-[10px] font-mono font-bold">
                   {item.badge}
@@ -281,7 +288,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
         })}
 
         {/* Live Watch Status Section (C1-C6) */}
-        <div className="pt-4 space-y-1">
+        <div className="lear-sidebar__label pt-4 space-y-1">
           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Eye size={12} className="text-accent" />
@@ -348,7 +355,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
       </nav>
 
       {/* Footer / Watcher Status */}
-      <div className="p-4 border-t border-border-subtle bg-surface/30">
+      <div className="lear-sidebar__footer p-4 border-t border-border-subtle bg-surface/30">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center">
@@ -377,6 +384,17 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
           </span>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setCollapsed(value => !value)}
+        className="lear-sidebar__toggle"
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+        <span className="lear-sidebar__label">{collapsed ? 'Expand' : 'Collapse'} workspace</span>
+      </button>
     </aside>
   );
 };
