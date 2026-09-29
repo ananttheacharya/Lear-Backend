@@ -150,3 +150,13 @@
 .lear-dashboard .glass-panel:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg), 0 0 22px var(--color-brand-primary-muted); }
 @keyframes lear-dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .lear-dashboard { animation: none; } .lear-dashboard .glass-panel, .lear-dashboard .glass-panel::after { transition: none; transform: none; } }
+
+
+/* Chat console: a focused command surface, not decorative noise. */
+.lear-chat-drawer { background: linear-gradient(155deg, rgba(14,19,31,.98), rgba(5,8,16,.99)); box-shadow: -24px 0 70px rgba(0,0,0,.48), -8px 0 32px var(--color-brand-primary-muted); }
+.lear-chat-drawer::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.22; background: linear-gradient(transparent 96%, rgba(255,58,137,.16) 100%); background-size:100% 7px; mix-blend-mode:screen; }
+.lear-chat-transcript { perspective:900px; scroll-behavior:smooth; }
+.lear-chat-transcript > * { animation: chat-message-enter var(--duration-slow) var(--ease-out) both; transform-origin: bottom right; }
+.lear-chat-drawer input:focus { caret-color: var(--color-brand-primary-light); }
+@keyframes chat-message-enter { from { opacity:0; transform:translate3d(12px,10px,-12px) rotateX(3deg); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .lear-chat-transcript > * { animation:none; } .lear-chat-drawer::before { display:none; } }

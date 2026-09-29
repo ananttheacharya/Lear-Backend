@@ -579,7 +579,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border-subtle z-50 flex flex-col shadow-2xl"
+            className="lear-chat-drawer fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border-subtle z-50 flex flex-col shadow-2xl"
           >
             {/* Header */}
             <div className="p-4 border-b border-border-subtle bg-surface/40 flex items-center justify-between">
@@ -682,7 +682,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             )}
 
             {/* Message Feed */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="lear-chat-transcript flex-1 overflow-y-auto p-5 space-y-4">
               {messages.map(msg => (
                 <ChatMessage
                   key={msg.id}
