@@ -254,6 +254,14 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
           return (
             <button
               key={item.id}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                event.preventDefault();
+                const items = Array.from(document.querySelectorAll<HTMLElement>('.lear-nav-item'));
+                const current = items.indexOf(event.currentTarget);
+                const next = event.key === 'ArrowDown' ? Math.min(current + 1, items.length - 1) : Math.max(current - 1, 0);
+                items[next]?.focus();
+              }}
               onClick={() => {
                 if (item.id === 'projects') {
                   context.clearProjectDetail();

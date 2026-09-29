@@ -1,32 +1,33 @@
 # Lear UI Progress Sheet
 
-This sheet records UI work completed in the canonical repository and keeps every effect within an explicit performance and accessibility budget.
+## Scope and guardrails
 
-## Phase 1 — Premium workspace foundation
+All work remains in the existing Lear React/Tauri structure. Existing APIs, data-fetching paths, routes, and backend contracts are preserved. Effects are reusable, state-driven, CSS-first, and disabled/reduced for users who request reduced motion.
 
-| Task | Status | Scope delivered | Budget / verification |
+| Area | Status | Delivered | Budget / evidence |
 |---|---|---|---|
-| U-01 design tokens | Existing / audited | Existing brand, neutral, semantic, typography, spacing, elevation, motion, and z-index tokens remain the source of truth. | No new dependency; no audio assets; existing frontend build remains the baseline. |
-| U-02 sidebar foundation | In progress — first slice complete | Added persisted collapse/expand mode, icon-only collapsed state, accessible labels/tooltips, active-page `aria-current`, focus-visible treatment, premium accent indicator preservation, and reduced-motion fallback. | One CSS transition system, under the existing 200ms normal-motion token; no JavaScript animation loop. |
-| Global shell | Complete | Added a restrained radial aura using existing pink/cyan tokens and a stable content scrollbar gutter. | CSS-only, pointer-events disabled, no layout/network cost. |
-| U-03 dashboard | First visual slice complete | Added a dashboard presentation hook, entry transition, token-based glass elevation, hover lift, and restrained light sweep while preserving existing data/API behavior. | 3 dashboard motion patterns; CSS-only; reduced-motion fallback; no new dependency. Component extraction remains next.
-| Audio system | Not started | No audio shipped before asset, licensing, autoplay, mute, reduced-audio, and lazy-loading design is approved. | 0 / 200 sound effects shipped. |
-| Animation system | First slice complete | Sidebar transition, label fade/slide, active navigation motion, shell aura, dashboard entry, dashboard hover lift, dashboard light sweep. | 7 purposeful motion patterns / 900 requested maximum not approached. Reduced-motion fallback included. |
+| U-01 Design tokens | Complete / preserved | Brand pink/cyan palette, neutral scale, semantic colors, typography, spacing, elevation, motion, and z-index tokens remain the foundation. | No new visual primitives bypass the token layer. |
+| U-02 Sidebar | Implemented | Persisted collapse mode, icon-only workspace, accessible labels, active `aria-current`, keyboard Up/Down navigation, focus rings, smooth transitions. | 5 purposeful motion behaviors; CSS transitions; reduced-motion fallback. |
+| U-03 Dashboard | First presentation pass | Existing dashboard data and layout preserved; shell aura, dashboard entry, glass elevation, hover lift, light sweep, and status-led visual treatment added. | 7 purposeful motion behaviors; no polling/data logic changed. Full decomposition remains the next pass. |
+| U-04 Component library | Implemented foundation | Added typed `Button`, `Card`, `Badge`, `Input`, `Modal`, `Dropdown`, `Tooltip`, `Skeleton`, `EmptyState`, shared CSS, and exports under `desktop/src/components/ui/`. | 9 reusable primitives; no third-party UI dependency; focus/ARIA behavior included where applicable. |
+| Audio | Not shipped | No unlicensed or autoplay-blocked assets added. | 0 / 200 effects; audio architecture requires a separate approved asset/licensing decision. |
+| Animation | Bounded | Motion is limited to purposeful navigation, shell, dashboard, feedback, modal, tooltip, skeleton, and control states. | 20 reusable motion behaviors; far below 900; reduced-motion fallback included. |
 
-## Guardrails
+## Verification
 
-- All changes stay inside `Lear-backend-Avi`.
-- Existing API routes and response contracts are untouched.
-- No secrets, credentials, generated build output, or audio binaries are added.
-- No third-party UI library or animation dependency was added.
-- Motion is CSS-based and respects `prefers-reduced-motion: reduce`.
-- The visual system uses the existing Lear pink/cyan dark palette.
-- Future animation additions must be reusable primitives tied to a user-visible state change, not decorative loops.
-- Future audio additions require explicit mute controls, browser/Tauri-safe playback, lazy loading, licensing records, and tests.
+- Frontend TypeScript/Vite build must pass.
+- Frontend behavioral tests must pass.
+- `git diff --check` must pass.
+- No `.env`, credentials, build artifacts, or audio binaries are committed.
+- No API contract changes are included in this UI work.
 
-## Next planned slice
+## Remaining U-03 work
 
-1. Extract dashboard presentation into `dashboard/` components without changing API fetching.
-2. Add skeleton states and health/KPI transitions triggered only by data changes.
-3. Add behavioral frontend tests for collapsed navigation and dashboard loading states.
-4. Re-run build and frontend tests before expanding the visual surface.
+- Extract dashboard presentation into independently testable health, KPI, activity, quick-action, connector, and skeleton components.
+- Add data-change-only score/KPI transitions.
+- Add dashboard behavioral tests.
+
+## Remaining U-04 work
+
+- Add the development-only living preview route for all primitives.
+- Refactor one existing production component to consume the primitives after visual review.
