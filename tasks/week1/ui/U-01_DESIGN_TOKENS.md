@@ -11,7 +11,7 @@
 
 ## Objective
 
-Audit the current `index.css` and define a comprehensive design token system covering: spacing scale, typography scale, color palette, elevation/shadow system, border-radius scale, and motion/easing tokens. Every component should reference tokens via CSS custom properties — no raw values.
+Audit the current `in1x.css` and define a comprehensive design token system covering: spacing scale, typography scale, color palette, elevation/shadow system, border-radius scale, and motion/easing tokens. Every component should reference tokens via CSS custom properties — no raw values.
 
 ---
 

@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
   };
 
   return (
-    <aside className="w-64 bg-[#080B11] border-r border-border-subtle flex flex-col h-full select-none">
+    <aside className="w-64 bg-background border-r border-border-subtle flex flex-col h-full select-none">
       {/* Brand Header */}
       <div className="p-5 pb-3">
         <div className="flex items-center justify-between">

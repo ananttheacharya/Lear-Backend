@@ -579,7 +579,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#080B11] border-l border-border-subtle z-50 flex flex-col shadow-2xl"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border-subtle z-50 flex flex-col shadow-2xl"
           >
             {/* Header */}
             <div className="p-4 border-b border-border-subtle bg-surface/40 flex items-center justify-between">
@@ -625,7 +625,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             </div>
 
             {/* Live Omni-Channel Status Bar */}
-            <div className="px-4 py-1.5 bg-[#070A10] border-b border-border-subtle/40 flex items-center justify-between text-[10px]">
+            <div className="px-4 py-1.5 bg-neutral-950 border-b border-border-subtle/40 flex items-center justify-between text-[10px]">
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 font-mono">LIVE CHANNELS:</span>
                 <span className="flex items-center gap-1 text-emerald-400 font-medium">
@@ -703,7 +703,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
 
             {/* Suggested Prompt & Action Chips */}
             {suggestedPrompts.length > 0 && (
-              <div className="px-4 py-2 bg-[#090D15] border-t border-border-subtle/50 flex flex-col gap-1.5">
+              <div className="px-4 py-2 bg-background border-t border-border-subtle/50 flex flex-col gap-1.5">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
                   {activeContext?.incidentId ? '⚡ Quick Actions & Decisions' : 'Suggested Questions'}
                 </span>
@@ -730,7 +730,7 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             )}
 
             {/* Channel Dispatch Selector & Inbox Poller */}
-            <div className="flex items-center justify-between px-4 py-1.5 bg-[#090D15] border-t border-border-subtle/50 text-[11px]">
+            <div className="flex items-center justify-between px-4 py-1.5 bg-background border-t border-border-subtle/50 text-[11px]">
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-500 font-mono text-[10px]">ROUTE:</span>
                 <button

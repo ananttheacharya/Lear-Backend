@@ -97,7 +97,7 @@ function MarkdownRenderer({ content }: { content: string }) {
         elements.push(
           <div
             key={`code-block-${currentBlockIdx}`}
-            className="my-2.5 rounded-xl border border-border-subtle bg-[#05070B] overflow-hidden shadow-inner font-mono text-xs"
+            className="my-2.5 rounded-xl border border-border-subtle bg-neutral-950 overflow-hidden shadow-inner font-mono text-xs"
           >
             <div className="flex items-center justify-between px-3 py-1.5 bg-surface/60 border-b border-border-subtle text-[10px] text-gray-400">
               <span className="uppercase tracking-wider font-semibold text-accent/80">
@@ -165,7 +165,7 @@ function MarkdownRenderer({ content }: { content: string }) {
     elements.push(
       <div
         key="code-block-unclosed"
-        className="my-2.5 rounded-xl border border-border-subtle bg-[#05070B] overflow-hidden shadow-inner font-mono text-xs"
+        className="my-2.5 rounded-xl border border-border-subtle bg-neutral-950 overflow-hidden shadow-inner font-mono text-xs"
       >
         <div className="flex items-center justify-between px-3 py-1.5 bg-surface/60 border-b border-border-subtle text-[10px] text-accent/80 font-semibold uppercase">
           <span>{codeLang || 'streaming...'}</span>
@@ -214,7 +214,7 @@ export default function ChatMessage({ message, isExecuting = false, onExecute }:
             ? 'bg-accent text-gray-950 font-medium rounded-tr-none shadow-accent/10'
             : message.isError
             ? 'bg-red-500/10 border border-red-500/30 text-red-200 rounded-tl-none'
-            : 'bg-[#0E131F]/90 border border-border-subtle text-gray-200 rounded-tl-none'
+            : 'bg-surface/90 border border-border-subtle text-gray-200 rounded-tl-none'
         }`}
       >
         {message.isError && (

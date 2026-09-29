@@ -19,7 +19,7 @@ export const MetricLineChart: React.FC<MetricLineChartProps> = ({
   data = [],
   label,
   unit = '',
-  color = '#FF3A89',
+  color = 'var(--color-brand-primary)',
   height = 160,
   onExpand,
 }) => {

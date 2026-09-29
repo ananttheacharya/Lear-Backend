@@ -365,7 +365,7 @@ export default function Dashboard({
 
       {/* Context-Aware Incident Banner */}
       {latestIncident && latestIncident.status === 'ACTIVE' ? (
-        <div className="bg-gradient-to-r from-rose-950/70 via-[#0E1422] to-rose-950/50 border-2 border-rose-500/60 rounded-2xl p-5 shadow-2xl shadow-rose-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
+        <div className="bg-gradient-to-r from-rose-950/70 via-surface to-rose-950/50 border-2 border-rose-500/60 rounded-2xl p-5 shadow-2xl shadow-rose-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
           <div className="flex items-start gap-3.5">
             <div className="p-3 bg-rose-500/20 rounded-xl text-rose-400 border border-rose-500/40 shrink-0">
               <ShieldAlert size={22} className="animate-pulse" />

@@ -414,9 +414,9 @@ export default function Integrations({ onConfigureConnector: _onConfigureConnect
                           <div className="flex justify-between items-start mb-4">
                             <div
                               className="p-3 rounded-xl border border-white/10 transition-transform group-hover:scale-105"
-                              style={{ backgroundColor: `${item.color || '#FF3A89'}20` }}
+                              style={{ backgroundColor: item.color ? `${item.color}20` : 'var(--color-brand-primary-muted)' }}
                             >
-                              <Cloud size={24} style={{ color: item.color || '#FF3A89' }} />
+                              <Cloud size={24} style={{ color: item.color || 'var(--color-brand-primary)' }} />
                             </div>
 
                             {/* Status Badge */}
