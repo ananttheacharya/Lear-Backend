@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
-  ShieldCheck,
   Stethoscope,
   Sparkles,
   Plus,
@@ -10,7 +9,6 @@ import {
   ArrowRight,
   RefreshCw,
   Layers,
-  Radio,
   FileText,
   Clock,
   CheckCircle2,
@@ -28,6 +26,7 @@ import ServiceWidget from './ServiceWidget';
 import ErrorBoundary from './ErrorBoundary';
 import useWatcher from '../hooks/useWatcher';
 import { useLear } from '../context/LearContext';
+import { KPIStrip } from './dashboard';
 
 interface DashboardProps {
   activeProject?: any;
@@ -307,7 +306,7 @@ export default function Dashboard({
   const errorPct = (errorCount / totalEntities) * 100;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="lear-dashboard p-8 max-w-7xl mx-auto space-y-8">
       {/* 1. Mission Control Header */}
       <div className="flex flex-wrap justify-between items-start gap-4 pb-2 border-b border-border-subtle/60">
         <div>
@@ -455,93 +454,16 @@ export default function Dashboard({
       ) : null}
 
       {/* 2. System Health Strip & Segmented Progress Bar */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse">
-          {[1, 2, 3, 4].map(idx => (
-            <div key={idx} className="h-28 rounded-2xl bg-surface/40 border border-border-subtle" />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Health Score Tile */}
-            <div className="glass-panel rounded-2xl p-5 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-32 group hover:border-accent/30 transition-all">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">Infrastructure Health</span>
-                <div
-                  className={`p-2 rounded-xl ${
-                    healthScore >= 90
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : healthScore >= 70
-                      ? 'bg-amber-500/10 text-amber-400'
-                      : 'bg-rose-500/10 text-rose-400'
-                  }`}
-                >
-                  <ShieldCheck size={18} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white tracking-tight">{healthScore}%</span>
-                <span className="text-[11px] font-medium text-gray-400 font-mono">operational</span>
-              </div>
-            </div>
-
-            {/* Configured Connectors */}
-            <div className="glass-panel rounded-2xl p-5 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-32 group hover:border-accent/30 transition-all">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">Active Integrations</span>
-                <div className="p-2 rounded-xl bg-accent/10 text-accent">
-                  <Layers size={18} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white tracking-tight">
-                  {summary?.counts?.configured_connectors ?? 0}
-                </span>
-                <span className="text-[11px] font-medium text-gray-400 font-mono">of 13 connectors</span>
-              </div>
-            </div>
-
-            {/* Active Services */}
-            <div className="glass-panel rounded-2xl p-5 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-32 group hover:border-accent/30 transition-all">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">Monitored Services</span>
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-                  <Server size={18} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white tracking-tight">{totalServicesCount}</span>
-                <span className="text-[11px] font-medium text-gray-400 font-mono">active in {currentEnvironment}</span>
-              </div>
-            </div>
-
-            {/* Watcher Stream Status */}
-            <div className="glass-panel rounded-2xl p-5 border border-border-subtle relative overflow-hidden flex flex-col justify-between h-32 group hover:border-accent/30 transition-all">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">Telemetry Stream</span>
-                <div
-                  className={`p-2 rounded-xl ${
-                    watcherState === 'ACTIVE'
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : watcherState === 'ALERTING'
-                      ? 'bg-rose-500/10 text-rose-400'
-                      : 'bg-surface text-gray-400'
-                  }`}
-                >
-                  <Radio size={18} className={watcherState === 'ACTIVE' ? 'text-accent' : ''} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold font-mono text-white tracking-tight">
-                  {watcherState === 'ACTIVE' ? 'STREAMING' : watcherState}
-                </span>
-                <span className="text-[11px] font-medium text-gray-400 font-mono">
-                  {activeWatches.length} active watches
-                </span>
-              </div>
-            </div>
-          </div>
+      <div className="space-y-4">
+      <KPIStrip
+        healthScore={healthScore}
+        configuredConnectors={summary?.counts?.configured_connectors ?? 0}
+        totalServices={totalServicesCount}
+        watcherState={watcherState}
+        activeWatches={activeWatches.length}
+        environment={currentEnvironment}
+        loading={loading}
+      />
 
           {/* Segmented Status Progress Bar */}
           <div className="p-4 rounded-2xl bg-surface/30 border border-border-subtle space-y-2">
@@ -577,8 +499,7 @@ export default function Dashboard({
               />
             </div>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* 3. Main Dashboard Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

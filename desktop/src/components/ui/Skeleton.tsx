@@ -1,0 +1,3 @@
+import './ui.css';
+export interface SkeletonProps {variant?:'text'|'circular'|'rectangular';width?:string|number;height?:string|number;lines?:number;animate?:boolean;}
+export function Skeleton({variant='rectangular',width='100%',height='1rem',lines=1,animate=true}:SkeletonProps){if(variant==='text'&&lines>1)return <span className={`ui-skeleton-group ${animate?'ui-skeleton-group--animate':''}`}>{Array.from({length:lines},(_,i)=><span key={i} className="ui-skeleton" style={{width:i===lines-1?'72%':width,height}}/>)}</span>;return <span className={`ui-skeleton ui-skeleton--${variant} ${animate?'ui-skeleton--animate':''}`} style={{width,height}}/>;}

@@ -11,6 +11,7 @@ import NotificationToast from './components/NotificationToast';
 import Chatbot from './components/Chatbot';
 import ChatWorkspace from './components/ChatWorkspace';
 import ErrorBoundary from './components/ErrorBoundary';
+import ComponentPreview from './components/ui/Preview';
 import { LearProvider, useLear } from './context/LearContext';
 
 function AppContent() {
@@ -79,10 +80,10 @@ function AppContent() {
       {!isSetupComplete ? (
         <Wizard onComplete={handleSetupComplete} />
       ) : (
-        <div className="flex h-screen w-full relative z-10 overflow-hidden bg-background">
+        <div className="lear-shell flex h-screen w-full relative z-10 overflow-hidden bg-background">
           <Sidebar />
 
-          <main className="flex-1 overflow-y-auto">
+          <main className="lear-shell__main flex-1 overflow-y-auto">
             <ErrorBoundary fallbackTitle="View Error" fallbackMessage="There was a problem rendering this section.">
               {activeTab === 'dashboard' && (
                 <Dashboard
@@ -118,6 +119,9 @@ function AppContent() {
 }
 
 function App() {
+  if (import.meta.env.DEV && window.location.pathname === '/preview') {
+    return <ComponentPreview />;
+  }
   return (
     <ErrorBoundary fallbackTitle="Lear Application Error" fallbackMessage="A critical error occurred while loading the application.">
       <LearProvider>
