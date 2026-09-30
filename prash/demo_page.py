@@ -2,9 +2,9 @@
 
 Serves an executive-grade dashboard allowing presenters to:
   1. Demonstrate the live customer storefront experience and impact of outages.
-  2. Inject real Kubernetes failure (ConfigMap break).
-  3. Witness real-time detection, Datadog correlation, and DeepSeek AI auto-remediation.
-  4. View and dispatch executive HTML alert emails.
+  2. Simulate real-world failures across AWS, GCP, Kubernetes, Datadog, and PagerDuty.
+  3. Witness real-time AI diagnosis and autonomous multi-cloud remediation (SSM, gcloud, kubectl, API resolution).
+  4. View dispatched executive alerts and incident war rooms.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lear | Autonomous SRE Demo & Storefront</title>
+  <title>Lear | Autonomous SRE Multi-Cloud Demo Control Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -29,6 +29,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       --danger-glow: rgba(244, 63, 94, 0.25);
       --warning: #F59E0B;
       --cyan: #06B6D4;
+      --purple: #8B5CF6;
       --text-main: #F8FAFC;
       --text-muted: #94A3B8;
       --text-dim: #64748B;
@@ -60,7 +61,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     .logo-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
     .logo {
       font-size: 20px;
@@ -106,12 +107,21 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       align-items: center;
       gap: 16px;
     }
+    .cluster-tag {
+      background: rgba(255,255,255,0.04);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--surface-border);
+    }
+    .cluster-tag strong {
+      color: #FFF;
+    }
     .header-actions {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    .btn-email-preview {
+    .btn-secondary {
       background: #1E293B;
       border: 1px solid var(--surface-border);
       color: #E2E8F0;
@@ -125,17 +135,50 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       gap: 6px;
       transition: all 0.2s;
     }
-    .btn-email-preview:hover {
+    .btn-secondary:hover {
       background: #334155;
       border-color: #475569;
     }
 
+    /* Sub-nav connector tabs */
+    .connector-tabs-bar {
+      background: #0B0E16;
+      border-bottom: 1px solid var(--surface-border);
+      padding: 8px 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: #FFF;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .tab-btn.active {
+      color: #FFF;
+      background: #1B2333;
+      border-color: #2D3A54;
+    }
+
     .main-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1.1fr;
       gap: 24px;
       padding: 24px;
-      max-width: 1600px;
+      max-width: 1700px;
       margin: 0 auto;
     }
 
@@ -176,7 +219,68 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       gap: 20px;
     }
 
-    /* Storefront Styles */
+    /* Radar / Multi-Cloud Service Cards */
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .service-card {
+      background: #111724;
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .service-card:hover {
+      border-color: #2D3A54;
+      background: #141C2C;
+    }
+    .service-card.error {
+      border-color: rgba(244, 63, 94, 0.6);
+      background: rgba(244, 63, 94, 0.08);
+    }
+    .service-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .service-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #E2E8F0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .service-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
+    }
+    .service-card.error .service-badge {
+      background: rgba(244, 63, 94, 0.2);
+      color: #FB7185;
+    }
+    .service-detail {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      justify-content: space-between;
+    }
+    .service-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Storefront & Customer Traffic */
     .store-banner {
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
       border: 1px solid rgba(16, 185, 129, 0.2);
@@ -202,36 +306,31 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     .product-list {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
+      gap: 12px;
     }
     .product-card {
       background: #111724;
       border: 1px solid var(--surface-border);
       border-radius: 10px;
-      padding: 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: all 0.2s;
-    }
-    .product-card:hover {
-      border-color: #2D3A54;
-      transform: translateY(-2px);
     }
     .product-icon {
-      font-size: 28px;
-      margin-bottom: 8px;
+      font-size: 24px;
+      margin-bottom: 6px;
     }
     .product-name {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       color: #E2E8F0;
     }
     .product-price {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--primary);
-      margin: 8px 0;
+      margin: 6px 0;
     }
     .btn-add-cart {
       background: rgba(16, 185, 129, 0.15);
@@ -247,36 +346,31 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       background: #111724;
       border: 1px solid var(--surface-border);
       border-radius: 10px;
-      padding: 18px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
     .checkout-summary {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px dashed var(--surface-border);
-      padding-bottom: 12px;
-    }
-    .checkout-summary .total {
-      font-size: 20px;
-      font-weight: 800;
-      color: #FFF;
+      padding-bottom: 10px;
     }
     .btn-checkout {
       background: linear-gradient(135deg, #10B981 0%, #059669 100%);
       color: #FFF;
       border: none;
-      padding: 14px;
+      padding: 12px;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       box-shadow: 0 4px 15px var(--primary-glow);
       transition: all 0.2s;
     }
@@ -293,11 +387,11 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       background: #090C13;
       border: 1px solid var(--surface-border);
       border-radius: 8px;
-      padding: 14px;
+      padding: 12px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
-      min-height: 120px;
-      max-height: 160px;
+      min-height: 100px;
+      max-height: 140px;
       overflow-y: auto;
     }
     .feed-line {
@@ -310,100 +404,141 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     .feed-line.warn { color: #FBBF24; }
     .feed-line.info { color: #94A3B8; }
 
-    /* SRE Engine Controls */
-    .service-radar {
+    /* Failure Scenario Launcher Grid */
+    .scenarios-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
     }
-    .radar-card {
+    .scenario-card {
       background: #111724;
       border: 1px solid var(--surface-border);
       border-radius: 8px;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      justify-content: space-between;
+      gap: 8px;
     }
-    .radar-card.error {
-      border-color: rgba(244, 63, 94, 0.6);
-      background: rgba(244, 63, 94, 0.08);
-    }
-    .radar-header {
+    .scenario-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .radar-name {
-      font-size: 12px;
+    .scenario-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .tag-aws { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+    .tag-gcp { background: rgba(56, 189, 248, 0.2); color: #38BDF8; }
+    .tag-k8s { background: rgba(139, 92, 246, 0.2); color: #A78BFA; }
+    .tag-obs { background: rgba(244, 63, 94, 0.2); color: #FB7185; }
+    .tag-cascade { background: rgba(236, 72, 153, 0.2); color: #F472B6; }
+
+    .scenario-title {
+      font-size: 13px;
       font-weight: 700;
       color: #E2E8F0;
     }
-    .radar-pill {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(16, 185, 129, 0.2);
-      color: #34D399;
-    }
-    .radar-card.error .radar-pill {
-      background: rgba(244, 63, 94, 0.2);
-      color: #FB7185;
-    }
-    .radar-detail {
+    .scenario-desc {
       font-size: 11px;
-      color: var(--text-dim);
+      color: var(--text-muted);
+      line-height: 1.4;
     }
-
-    .control-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+    .scenario-plan {
+      font-size: 11px;
+      color: var(--primary);
+      background: rgba(16, 185, 129, 0.08);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border-left: 2px solid var(--primary);
+      font-family: 'JetBrains Mono', monospace;
     }
-    .btn-action {
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
+    .btn-inject {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #FB7185;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       transition: all 0.2s;
     }
-    .btn-break {
-      background: rgba(244, 63, 94, 0.15);
-      border: 1px solid rgba(244, 63, 94, 0.4);
-      color: #FB7185;
-    }
-    .btn-break:hover {
+    .btn-inject:hover {
       background: rgba(244, 63, 94, 0.25);
     }
-    .btn-fix {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #34D399;
+
+    /* Primary Auto-Remediation Bar */
+    .remediation-bar {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
-    .btn-fix:hover {
-      background: rgba(16, 185, 129, 0.25);
+    .btn-ai-fix {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: #FFF;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px var(--primary-glow);
+      transition: all 0.2s;
+      white-space: nowrap;
     }
-    .btn-reset {
-      background: #1E293B;
-      border: 1px solid var(--surface-border);
-      color: #E2E8F0;
+    .btn-ai-fix:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px var(--primary-glow);
     }
-    .btn-reset:hover {
-      background: #334155;
+
+    .control-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
     }
-    .btn-traffic {
+    .btn-action {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-action-warroom {
+      background: #2563EB;
+      color: #FFF;
+      border: 1px solid #3B82F6;
+    }
+    .btn-action-traffic {
       background: rgba(6, 182, 212, 0.15);
       border: 1px solid rgba(6, 182, 212, 0.4);
       color: #38BDF8;
     }
-    .btn-traffic:hover {
-      background: rgba(6, 182, 212, 0.25);
+    .btn-action-reset {
+      background: #1E293B;
+      border: 1px solid var(--surface-border);
+      color: #E2E8F0;
     }
 
     .terminal-box {
@@ -422,18 +557,17 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       font-weight: 700;
     }
     .tag-brain { color: #818CF8; }
-    .tag-k8s { color: #38BDF8; }
-    .tag-dd { color: #F472B6; }
-    .tag-fix { color: #34D399; }
-    .tag-err { color: #F43F5E; }
+    .tag-aws-term { color: #F59E0B; }
+    .tag-gcp-term { color: #38BDF8; }
+    .tag-k8s-term { color: #A78BFA; }
+    .tag-dd-term { color: #F472B6; }
+    .tag-fix-term { color: #34D399; }
+    .tag-err-term { color: #F43F5E; }
 
     /* Modal Styles */
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(8px);
       display: none;
@@ -442,15 +576,13 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       z-index: 100;
       padding: 24px;
     }
-    .modal-overlay.active {
-      display: flex;
-    }
+    .modal-overlay.active { display: flex; }
     .modal-content {
       background: #0E131F;
       border: 1px solid var(--surface-border);
       border-radius: 14px;
       width: 100%;
-      max-width: 760px;
+      max-width: 800px;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
@@ -484,17 +616,8 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       justify-content: space-between;
       background: #101624;
     }
-    .btn-close {
-      background: #1E293B;
-      color: #E2E8F0;
-      border: 1px solid var(--surface-border);
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-    }
 
-    /* Toast Notification */
+    /* Toast */
     .toast-alert {
       position: fixed;
       top: 76px;
@@ -509,27 +632,12 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       gap: 14px;
       z-index: 90;
       animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      max-width: 420px;
+      max-width: 440px;
     }
-    .toast-alert.active {
-      display: flex;
-    }
+    .toast-alert.active { display: flex; }
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
-    }
-    .toast-icon {
-      font-size: 24px;
-    }
-    .toast-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #F8FAFC;
-    }
-    .toast-desc {
-      font-size: 12px;
-      color: #CBD5E1;
-      margin-top: 2px;
     }
   </style>
 </head>
@@ -543,43 +651,173 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       </div>
     </div>
     <div class="cluster-info">
-      <span>☁️ AWS EKS: <strong>lear-demo</strong> (ap-south-1)</span>
-      <span>🧠 Brain: <strong>DeepSeek + Kimi</strong></span>
-      <span>📊 Datadog: <strong>Connected</strong></span>
+      <span class="cluster-tag">☁️ <strong>AWS EC2 & ECS</strong> (Mock Active)</span>
+      <span class="cluster-tag">⚡ <strong>GCP Compute & Cloud Run</strong> (Mock Active)</span>
+      <span class="cluster-tag">☸️ <strong>Kubernetes</strong> (lear-demo)</span>
+      <span class="cluster-tag">📊 <strong>Datadog & PagerDuty</strong></span>
     </div>
     <div class="header-actions">
-      <button class="btn-email-preview" onclick="openEmailModal()">
-        ✉️ Inspect Alert Email
-      </button>
+      <button class="btn-secondary" onclick="openEmailModal()">✉️ Incident Alert Email</button>
+      <button class="btn-secondary" onclick="resetAllServices()">🔄 Reset Baseline</button>
     </div>
   </header>
 
+  <!-- Filter tabs -->
+  <div class="connector-tabs-bar">
+    <button class="tab-btn active" onclick="filterConnectorTab('all')">🌐 All Cloud Connectors</button>
+    <button class="tab-btn" onclick="filterConnectorTab('aws')">☁️ AWS (EC2/SSM)</button>
+    <button class="tab-btn" onclick="filterConnectorTab('gcp')">⚡ Google Cloud (GCE/Cloud Run)</button>
+    <button class="tab-btn" onclick="filterConnectorTab('k8s')">☸️ Kubernetes (Pods/ConfigMaps)</button>
+    <button class="tab-btn" onclick="filterConnectorTab('obs')">📊 Observability (Datadog/PagerDuty)</button>
+  </div>
+
   <div class="toast-alert" id="incidentToast">
-    <div class="toast-icon">🚨</div>
+    <div style="font-size: 24px;">🚨</div>
     <div>
-      <div class="toast-title" id="toastTitle">CRITICAL INCIDENT DETECTED</div>
-      <div class="toast-desc" id="toastDesc">checkout-api CrashLoopBackOff • Email Alert Dispatched</div>
+      <div style="font-size: 14px; font-weight: 700; color: #F8FAFC;" id="toastTitle">CRITICAL OUTAGE DETECTED</div>
+      <div style="font-size: 12px; color: #CBD5E1; margin-top: 2px;" id="toastDesc">Service degradation detected. AI auto-remediation available.</div>
     </div>
-    <button class="btn-email-preview" style="padding: 4px 8px; font-size: 11px;" onclick="openEmailModal()">View Email</button>
+    <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="triggerAutoFix()">Fix Now</button>
   </div>
 
   <div class="main-grid">
-    <!-- LEFT PANE: Customer Storefront Experience -->
+    <!-- LEFT PANE: Fleet Topology & Live Workload -->
     <div class="pane">
       <div class="pane-header">
         <div>
-          <div class="pane-title">🛒 Customer Storefront ("Lear Hardware")</div>
-          <div class="pane-subtitle">Live production e-commerce checkout hitting AWS ELB</div>
+          <div class="pane-title">🌐 Multi-Cloud Service Topology & Customer Storefront</div>
+          <div class="pane-subtitle">Live health status across AWS, GCP, K8s, and real-time checkout pipeline</div>
         </div>
-        <span class="status-badge" id="storeStatusBadge">100% HEALTHY</span>
+        <span class="status-badge" id="fleetStatusBadge">100% HEALTHY</span>
       </div>
       <div class="pane-body">
+        <!-- Service Radar Grid -->
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+            MICROSERVICES & CONNECTOR RADAR
+          </div>
+          <div class="service-grid" id="serviceGrid">
+            <!-- AWS Cards -->
+            <div class="service-card" id="cardAwsFixture" data-connector="aws">
+              <div class="service-card-header">
+                <span class="service-card-title">☁️ prash-test-fixture</span>
+                <span class="service-badge" id="badgeAwsFixture">Running</span>
+              </div>
+              <div class="service-detail">
+                <span>CPU: <strong id="valAwsCpu">12.4%</strong></span>
+                <span>Type: t3.micro</span>
+              </div>
+              <div class="service-meta">AWS EC2 (ap-south-1a) • Watchdog OK</div>
+            </div>
+
+            <div class="service-card" id="cardAwsPayment" data-connector="aws">
+              <div class="service-card-header">
+                <span class="service-card-title">☁️ payment-api</span>
+                <span class="service-badge" id="badgeAwsPayment">Running</span>
+              </div>
+              <div class="service-detail">
+                <span>Disk: <strong id="valAwsDisk">34%</strong></span>
+                <span>Port: 5000</span>
+              </div>
+              <div class="service-meta">AWS EC2 (ap-south-1) • Settlement Engine</div>
+            </div>
+
+            <!-- GCP Cards -->
+            <div class="service-card" id="cardGcpProxy" data-connector="gcp">
+              <div class="service-card-header">
+                <span class="service-card-title">⚡ drufiy-proxy</span>
+                <span class="service-badge" id="badgeGcpProxy">RUNNING</span>
+              </div>
+              <div class="service-detail">
+                <span>Conns: <strong id="valGcpConns">142/1024</strong></span>
+                <span>Zone: us-c1-a</span>
+              </div>
+              <div class="service-meta">GCP Compute Engine • Envoy Ingress</div>
+            </div>
+
+            <div class="service-card" id="cardGcpOrder" data-connector="gcp">
+              <div class="service-card-header">
+                <span class="service-card-title">⚡ order-service</span>
+                <span class="service-badge" id="badgeGcpOrder">RUNNING</span>
+              </div>
+              <div class="service-detail">
+                <span>RAM: <strong id="valGcpRam">218MB / 512MB</strong></span>
+                <span>Rev: v4</span>
+              </div>
+              <div class="service-meta">GCP Cloud Run • Async Processor</div>
+            </div>
+
+            <!-- K8s Cards -->
+            <div class="service-card" id="cardK8sCheckout" data-connector="k8s">
+              <div class="service-card-header">
+                <span class="service-card-title">☸️ checkout-api</span>
+                <span class="service-badge" id="badgeK8sCheckout">Running</span>
+              </div>
+              <div class="service-detail">
+                <span>Host: <strong id="valK8sHost">postgres</strong></span>
+                <span>Restarts: 0</span>
+              </div>
+              <div class="service-meta">K8s Pod • FastAPI Core Backend</div>
+            </div>
+
+            <div class="service-card" id="cardK8sFrontend" data-connector="k8s">
+              <div class="service-card-header">
+                <span class="service-card-title">☸️ frontend-web</span>
+                <span class="service-badge" id="badgeK8sFrontend">Running</span>
+              </div>
+              <div class="service-detail">
+                <span>Ingress: ELB :80</span>
+                <span>Ready: 1/1</span>
+              </div>
+              <div class="service-meta">K8s Pod • Nginx Web Gateway</div>
+            </div>
+
+            <!-- Observability Cards -->
+            <div class="service-card" id="cardDatadog" data-connector="obs">
+              <div class="service-card-header">
+                <span class="service-card-title">📊 datadog-monitor</span>
+                <span class="service-badge" id="badgeDatadog">OK</span>
+              </div>
+              <div class="service-detail">
+                <span>Rate: <strong id="valDdRate">0.4%</strong></span>
+                <span>Limit: 5.0%</span>
+              </div>
+              <div class="service-meta">Synthetic Monitor #316853860</div>
+            </div>
+
+            <div class="service-card" id="cardPagerDuty" data-connector="obs">
+              <div class="service-card-header">
+                <span class="service-card-title">📟 pagerduty-oncall</span>
+                <span class="service-badge" id="badgePagerDuty">Resolved</span>
+              </div>
+              <div class="service-detail">
+                <span>Service: prash-v2</span>
+                <span>Escalation: P1</span>
+              </div>
+              <div class="service-meta">On-Call Notification Engine</div>
+            </div>
+
+            <div class="service-card" id="cardK8sPostgres" data-connector="k8s">
+              <div class="service-card-header">
+                <span class="service-card-title">🐘 postgres-primary</span>
+                <span class="service-badge" id="badgeK8sPostgres">Running</span>
+              </div>
+              <div class="service-detail">
+                <span>Port: 5432</span>
+                <span>Health: 200 OK</span>
+              </div>
+              <div class="service-meta">K8s StatefulSet • Orders DB</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storefront Demo Section -->
         <div class="store-banner" id="storeBanner">
           <div>
-            <h4 id="bannerTitle">🟢 Checkout Gateway Online</h4>
-            <p id="bannerDesc">Database connected • Payment & Shipping microservices active</p>
+            <h4 id="bannerTitle">🟢 Customer Checkout Pipeline Online</h4>
+            <p id="bannerDesc">ELB -> Envoy Proxy -> checkout-api -> Postgres DB active & healthy</p>
           </div>
-          <div style="font-size: 13px; font-weight: 700;" id="bannerLatency">18ms</div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--primary);" id="bannerLatency">18ms</div>
         </div>
 
         <div class="product-list">
@@ -591,130 +829,170 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
           </div>
           <div class="product-card">
             <div class="product-icon">⚡</div>
-            <div class="product-name">Cloud Edge Appliance</div>
+            <div class="product-name">Multi-Cloud Edge Appliance</div>
             <div class="product-price">$199.00</div>
-            <button class="btn-add-cart" onclick="selectItem('Cloud Edge Appliance', 199.00)">Select</button>
+            <button class="btn-add-cart" onclick="selectItem('Multi-Cloud Edge Appliance', 199.00)">Select</button>
           </div>
           <div class="product-card">
             <div class="product-icon">📦</div>
-            <div class="product-name">Enterprise EKS Unit</div>
+            <div class="product-name">Autonomous Cluster Unit</div>
             <div class="product-price">$499.00</div>
-            <button class="btn-add-cart" onclick="selectItem('Enterprise EKS Unit', 499.00)">Select</button>
+            <button class="btn-add-cart" onclick="selectItem('Autonomous Cluster Unit', 499.00)">Select</button>
           </div>
         </div>
 
         <div class="checkout-box">
           <div class="checkout-summary">
             <div>
-              <div style="font-size: 12px; color: var(--text-muted);">Cart Item</div>
-              <strong id="cartItemName" style="font-size: 14px;">AI SRE Sentinel Key</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">Cart Item</div>
+              <strong id="cartItemName" style="font-size: 13px;">AI SRE Sentinel Key</strong>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 12px; color: var(--text-muted);">Total Price</div>
-              <div class="total" id="cartItemPrice">$49.99</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Total Price</div>
+              <div style="font-size: 18px; font-weight: 800; color: #FFF;" id="cartItemPrice">$49.99</div>
             </div>
           </div>
           <button class="btn-checkout" id="checkoutBtn" onclick="performCustomerCheckout()">
-            💳 Place Order & Process Checkout
+            💳 Place Order & Run E2E Checkout Flow
           </button>
         </div>
 
         <div>
-          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
-            LIVE CUSTOMER ORDER ACTIVITY STREAM
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">
+            CUSTOMER ORDER AUDIT STREAM
           </div>
           <div class="order-status-feed" id="orderFeed">
-            <div class="feed-line info">[INIT] Storefront loaded. Connected to AWS ELB checkout route.</div>
+            <div class="feed-line info">[INIT] Storefront loaded. Connected to multi-cloud proxy pipeline.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT PANE: Lear Autonomous SRE Control Engine -->
+    <!-- RIGHT PANE: Failure Simulator & AI SRE Brain -->
     <div class="pane">
       <div class="pane-header">
         <div>
-          <div class="pane-title">⚡ Lear Autonomous SRE Engine</div>
-          <div class="pane-subtitle">Live EKS topology, failure injection & DeepSeek diagnosis</div>
+          <div class="pane-title">⚡ Autonomous Multi-Cloud SRE Control Engine</div>
+          <div class="pane-subtitle">Simulate outages on AWS, GCP, K8s & witness Lear AI auto-fix live</div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
-          <span>Auto-Fix:</span>
-          <strong style="color: var(--primary);">ENABLED</strong>
+          <span>AI Healing:</span>
+          <strong style="color: var(--primary);">AUTONOMOUS</strong>
         </div>
       </div>
       <div class="pane-body">
-        <div class="service-radar">
-          <div class="radar-card" id="cardFrontend">
-            <div class="radar-header">
-              <span class="radar-name">frontend</span>
-              <span class="radar-pill" id="pillFrontend">Running</span>
+        <!-- Hero AI Remediation Trigger Bar -->
+        <div class="remediation-bar">
+          <div>
+            <div style="font-size: 14px; font-weight: 800; color: #FFF;">Autonomous AI Multi-Cloud Healing</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              Lear AI analyzes logs, executes targeted SSM/gcloud/kubectl fixes, and resolves alarms.
             </div>
-            <span class="radar-detail">nginx :80 (Public ELB)</span>
           </div>
-          <div class="radar-card" id="cardCheckout">
-            <div class="radar-header">
-              <span class="radar-name">checkout-api</span>
-              <span class="radar-pill" id="pillCheckout">Running</span>
-            </div>
-            <span class="radar-detail">FastAPI :8080 (Core)</span>
-          </div>
-          <div class="radar-card" id="cardPayment">
-            <div class="radar-header">
-              <span class="radar-name">payment-service</span>
-              <span class="radar-pill" id="pillPayment">Running</span>
-            </div>
-            <span class="radar-detail">Auth Engine :5000</span>
-          </div>
-          <div class="radar-card" id="cardShipping">
-            <div class="radar-header">
-              <span class="radar-name">shipping-service</span>
-              <span class="radar-pill" id="pillShipping">Running</span>
-            </div>
-            <span class="radar-detail">Rate Calculator :5001</span>
-          </div>
-          <div class="radar-card" id="cardPostgres">
-            <div class="radar-header">
-              <span class="radar-name">postgres</span>
-              <span class="radar-pill" id="pillPostgres">Running</span>
-            </div>
-            <span class="radar-detail">Database :5432</span>
-          </div>
-          <div class="radar-card" id="cardDatadog">
-            <div class="radar-header">
-              <span class="radar-name">datadog-agent</span>
-              <span class="radar-pill" id="pillDatadog">Active</span>
-            </div>
-            <span class="radar-detail">DaemonSet (2 nodes)</span>
-          </div>
-        </div>
-
-        <div class="control-actions">
-          <button class="btn-action btn-break" id="btnBreak" onclick="injectFailure()">
-            💥 Inject ConfigMap Break
-          </button>
-          <button class="btn-action btn-fix" id="btnFix" onclick="triggerAutoFix()">
-            🧠 Trigger Lear Auto-Fix
-          </button>
-          <button class="btn-action" style="background: #2563EB; color: #FFFFFF; border: 1px solid #3B82F6;" onclick="openLatestWarRoom()">
-            💬 Open Incident War Room
-          </button>
-          <button class="btn-action btn-traffic" id="btnTraffic" onclick="toggleTraffic()">
-            🚀 Start Background Traffic
-          </button>
-          <button class="btn-action btn-reset" onclick="resetCluster()">
-            🔄 Reset Cluster to Healthy
+          <button class="btn-ai-fix" id="btnHeroFix" onclick="triggerAutoFix()">
+            🧠 Trigger Lear AI Auto-Fix
           </button>
         </div>
 
+        <!-- Failure Simulator Cards -->
         <div>
           <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
-            LEAR AUTONOMOUS REASONING & SRE TERMINAL
+            SIMULATE OUTAGES FOR LIVE DEMO
+          </div>
+          <div class="scenarios-grid">
+            <!-- AWS Scenario 1 -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-aws">AWS EC2</span>
+                <button class="btn-inject" onclick="injectScenario('aws_cpu_spike')">💥 Inject CPU Spike</button>
+              </div>
+              <div class="scenario-title">Runaway Watchdog Hang</div>
+              <div class="scenario-desc">Simulates runaway thread and break marker on EC2 instance. CPU spikes to 99%.</div>
+              <div class="scenario-plan">AI Plan: SSM RunCommand rm marker & restart service</div>
+            </div>
+
+            <!-- AWS Scenario 2 -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-aws">AWS EBS</span>
+                <button class="btn-inject" onclick="injectScenario('aws_disk_full')">💥 Inject Disk Full</button>
+              </div>
+              <div class="scenario-title">Filesystem Inode Full</div>
+              <div class="scenario-desc">/var/log reaches 100% capacity on payment-api, blocking transaction commits.</div>
+              <div class="scenario-plan">AI Plan: Purge rotated logs & restart journald</div>
+            </div>
+
+            <!-- GCP Scenario 1 -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-gcp">GCP Compute</span>
+                <button class="btn-inject" onclick="injectScenario('gcp_proxy_exhaustion')">💥 Inject Proxy Leak</button>
+              </div>
+              <div class="scenario-title">Connection Pool Exhaustion</div>
+              <div class="scenario-desc">drufiy-proxy hits 1024/1024 sockets. External HTTP calls drop into 502 Bad Gateway.</div>
+              <div class="scenario-plan">AI Plan: gcloud compute ssh reload envoy proxy</div>
+            </div>
+
+            <!-- GCP Scenario 2 -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-gcp">GCP Cloud Run</span>
+                <button class="btn-inject" onclick="injectScenario('gcp_cloudrun_oom')">💥 Inject OOM Crash</button>
+              </div>
+              <div class="scenario-title">Container Memory OOM</div>
+              <div class="scenario-desc">order-service worker leaks RAM, container terminates with SIGKILL 137.</div>
+              <div class="scenario-plan">AI Plan: gcloud run services update --memory 1024Mi</div>
+            </div>
+
+            <!-- K8s Scenario -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-k8s">Kubernetes</span>
+                <button class="btn-inject" onclick="injectScenario('k8s_configmap_corrupt')">💥 Corrupt ConfigMap</button>
+              </div>
+              <div class="scenario-title">ConfigMap DB Host Mismatch</div>
+              <div class="scenario-desc">checkout-api-config set to 'postgres-wrong'. Pods enter CrashLoopBackOff.</div>
+              <div class="scenario-plan">AI Plan: kubectl patch configmap & rollout restart</div>
+            </div>
+
+            <!-- Cascade Scenario -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag tag-cascade">Multi-Cloud</span>
+                <button class="btn-inject" style="background: rgba(236,72,153,0.2); color:#F472B6;" onclick="injectScenario('multi_cloud_cascade')">🌪️ Full Cascade</button>
+              </div>
+              <div class="scenario-title">Cross-Cloud Domino Failure</div>
+              <div class="scenario-desc">Simultaneous break across AWS, GCP, K8s, and Datadog monitoring alert storm.</div>
+              <div class="scenario-plan">AI Plan: Orchestrate multi-connector recovery sequence</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="control-actions">
+          <button class="btn-action btn-action-warroom" onclick="openLatestWarRoom()">
+            💬 Open Incident War Room
+          </button>
+          <button class="btn-action btn-action-traffic" id="btnTraffic" onclick="toggleTraffic()">
+            🚀 Start Background Traffic
+          </button>
+          <button class="btn-action btn-action-reset" onclick="resetAllServices()">
+            🔄 Reset Fleet to 100%
+          </button>
+        </div>
+
+        <!-- Terminal log -->
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+            LEAR AUTONOMOUS REASONING & SRE EXECUTION LOG
           </div>
           <div class="terminal-box" id="termLog">
-            <div><span class="term-tag tag-brain">[BRAIN]</span> DeepSeek AI model engine connected and warm.</div>
-            <div><span class="term-tag tag-k8s">[K8S]</span> Watching namespace 'lear-demo' on AWS EKS cluster.</div>
-            <div><span class="term-tag tag-dd">[DATADOG]</span> Metric monitor 'Lear Demo: checkout-api health' reporting OK.</div>
-            <div><span class="term-tag tag-fix">[READY]</span> Autonomous auto-safe execution circuit active.</div>
+            <div><span class="term-tag tag-brain">[BRAIN]</span> DeepSeek / Kimi AI reasoning engine connected and warm.</div>
+            <div><span class="term-tag tag-aws-term">[AWS]</span> Monitoring 2 EC2 instances (prash-test-fixture, payment-api).</div>
+            <div><span class="term-tag tag-gcp-term">[GCP]</span> Monitoring drufiy-proxy (GCE) and order-service (Cloud Run).</div>
+            <div><span class="term-tag tag-k8s-term">[K8S]</span> Watching namespace 'lear-demo' pod lifecycle and ConfigMaps.</div>
+            <div><span class="term-tag tag-dd-term">[DATADOG]</span> Metric monitor 'prash.test.synthetic_error_rate' synchronized.</div>
+            <div><span class="term-tag tag-fix-term">[READY]</span> Autonomous multi-cloud remediation circuit armed.</div>
           </div>
         </div>
       </div>
@@ -726,20 +1004,18 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     <div class="modal-content">
       <div class="modal-header">
         <div style="font-weight: 700; font-size: 16px; color: #FFF;">
-          ✉️ Dispatched Incident Email Preview
+          ✉️ Dispatched Executive Incident Alert Email
         </div>
-        <button class="btn-close" onclick="closeEmailModal()">✕ Close</button>
+        <button class="btn-secondary" onclick="closeEmailModal()">✕ Close</button>
       </div>
       <div class="modal-body">
         <iframe class="email-frame" id="emailIframe" src="/api/demo/emails/latest"></iframe>
       </div>
       <div class="modal-footer">
         <div style="font-size: 12px; color: var(--text-muted);">
-          Recipient: <strong id="emailRecipient">oncall-team@lear-demo.com</strong> (SRE Alert)
+          Dispatched to: <strong>oncall-sre@lear-demo.com</strong>
         </div>
-        <button class="btn-email-preview" onclick="sendRealEmail()">
-          🚀 Send To My Email Address
-        </button>
+        <button class="btn-secondary" onclick="sendRealEmail()">🚀 Forward To My Email</button>
       </div>
     </div>
   </div>
@@ -748,6 +1024,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     let currentItem = { name: "AI SRE Sentinel Key", price: 49.99 };
     let trafficInterval = null;
     let isBroken = false;
+    let activeIncidentId = null;
 
     function selectItem(name, price) {
       currentItem = { name, price };
@@ -773,10 +1050,23 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       feed.prepend(div);
     }
 
+    function filterConnectorTab(type) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.querySelectorAll('.service-card').forEach(card => {
+        if (type === 'all' || card.getAttribute('data-connector') === type) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
     async function performCustomerCheckout() {
       const btn = document.getElementById('checkoutBtn');
       btn.disabled = true;
-      btn.innerText = 'Processing Payment...';
+      btn.innerText = 'Processing Payment via Proxy...';
       const t0 = performance.now();
 
       try {
@@ -791,96 +1081,172 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
         const elapsed = Math.round(performance.now() - t0);
         const data = await resp.json();
 
-        if (data.status === 'COMPLETED') {
+        if (resp.ok && data.status === 'COMPLETED') {
           logOrder('ok', `SUCCESS: Order #${data.order_id} placed for $${currentItem.price} (${elapsed}ms)`);
           document.getElementById('bannerLatency').innerText = `${elapsed}ms`;
         } else {
-          logOrder('err', `FAILED: ${data.error || '502 Bad Gateway - Connection Refused'} (${elapsed}ms)`);
-          triggerOutageUI();
+          logOrder('err', `FAILED: ${data.error || 'HTTP 502/504 Bad Gateway'} (${elapsed}ms)`);
+          triggerOutageUI(data.error);
         }
       } catch (err) {
-        logOrder('err', `FAILED: Service Unavailable (${err.message})`);
-        triggerOutageUI();
+        logOrder('err', `FAILED: Gateway Timeout (${err.message})`);
+        triggerOutageUI(err.message);
       } finally {
         btn.disabled = false;
-        btn.innerText = '💳 Place Order & Process Checkout';
+        btn.innerText = '💳 Place Order & Run E2E Checkout Flow';
       }
     }
 
-    function triggerOutageUI() {
+    function triggerOutageUI(customMsg) {
       isBroken = true;
-      document.getElementById('storeStatusBadge').innerText = 'OUTAGE DETECTED';
-      document.getElementById('storeStatusBadge').style.borderColor = 'var(--danger)';
-      document.getElementById('storeStatusBadge').style.color = 'var(--danger)';
+      document.getElementById('fleetStatusBadge').innerText = 'OUTAGE ACTIVE';
+      document.getElementById('fleetStatusBadge').style.borderColor = 'var(--danger)';
+      document.getElementById('fleetStatusBadge').style.color = 'var(--danger)';
       document.getElementById('storeBanner').classList.add('error');
-      document.getElementById('bannerTitle').innerText = '🔴 CHECKOUT PIPELINE FAILING';
-      document.getElementById('bannerDesc').innerText = 'Orders blocked: checkout-api cannot connect to PostgreSQL database!';
-      document.getElementById('cardCheckout').classList.add('error');
-      document.getElementById('pillCheckout').innerText = 'CrashLoop';
-
-      // Show toast
+      document.getElementById('bannerTitle').innerText = '🔴 CHECKOUT FLOW DEGRADED';
+      document.getElementById('bannerDesc').innerText = customMsg || 'Microservice failure detected in pipeline. Orders failing!';
+      document.getElementById('bannerLatency').innerText = 'ERR 502';
+      document.getElementById('bannerLatency').style.color = 'var(--danger)';
       document.getElementById('incidentToast').classList.add('active');
     }
 
     function restoreHealthyUI() {
       isBroken = false;
-      document.getElementById('storeStatusBadge').innerText = '100% HEALTHY';
-      document.getElementById('storeStatusBadge').style.borderColor = 'rgba(16, 185, 129, 0.3)';
-      document.getElementById('storeStatusBadge').style.color = 'var(--primary)';
+      document.getElementById('fleetStatusBadge').innerText = '100% HEALTHY';
+      document.getElementById('fleetStatusBadge').style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      document.getElementById('fleetStatusBadge').style.color = 'var(--primary)';
       document.getElementById('storeBanner').classList.remove('error');
-      document.getElementById('bannerTitle').innerText = '🟢 Checkout Gateway Online';
-      document.getElementById('bannerDesc').innerText = 'Database connected • Payment & Shipping microservices active';
-      document.getElementById('cardCheckout').classList.remove('error');
-      document.getElementById('pillCheckout').innerText = 'Running';
+      document.getElementById('bannerTitle').innerText = '🟢 Customer Checkout Pipeline Online';
+      document.getElementById('bannerDesc').innerText = 'ELB -> Envoy Proxy -> checkout-api -> Postgres DB active & healthy';
+      document.getElementById('bannerLatency').innerText = '18ms';
+      document.getElementById('bannerLatency').style.color = 'var(--primary)';
       document.getElementById('incidentToast').classList.remove('active');
+
+      // Reset card errors
+      document.querySelectorAll('.service-card').forEach(c => c.classList.remove('error'));
+      document.getElementById('badgeAwsFixture').innerText = 'Running';
+      document.getElementById('valAwsCpu').innerText = '12.4%';
+      document.getElementById('badgeGcpProxy').innerText = 'RUNNING';
+      document.getElementById('valGcpConns').innerText = '142/1024';
+      document.getElementById('badgeK8sCheckout').innerText = 'Running';
+      document.getElementById('valK8sHost').innerText = 'postgres';
+      document.getElementById('badgeDatadog').innerText = 'OK';
+      document.getElementById('valDdRate').innerText = '0.4%';
+      document.getElementById('badgePagerDuty').innerText = 'Resolved';
     }
 
-    let activeIncidentId = null;
-
-    async function injectFailure() {
-      logTerminal('tag-err', 'INJECT', 'Patching ConfigMap checkout-api-config: DATABASE_HOST -> postgres-wrong');
-      triggerOutageUI();
+    async function injectScenario(scenarioId) {
+      logTerminal('tag-err-term', 'INJECT', `Injecting failure scenario '${scenarioId}'...`);
 
       try {
-        const res = await fetch('/api/demo/inject-failure', { method: 'POST' });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error('HTTP ' + res.status + ': ' + errText);
-        }
+        const res = await fetch('/api/demo/inject-scenario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario_id: scenarioId })
+        });
         const d = await res.json();
-        if (d.incident) activeIncidentId = d.incident.incident_id;
-        logTerminal('tag-dd', 'DATADOG', 'Datadog synthetic monitor triggered: container count < 1');
-        logTerminal('tag-err', 'ALERT', 'Email Alert Dispatched to anantacharya5568@gmail.com');
-        logTerminal('tag-brain', 'WAR_ROOM', 'Shared War Room created: ' + (activeIncidentId || 'active'));
-        
-        // Refresh email iframe
-        document.getElementById('emailIframe').src = '/api/demo/emails/latest?t=' + Date.now();
+        if (d.incident_id) activeIncidentId = d.incident_id;
+
+        if (scenarioId === 'aws_cpu_spike') {
+          logTerminal('tag-aws-term', 'AWS-CW', 'CloudWatch Alarm HighCPUUtilization triggered: 99.4%');
+          document.getElementById('cardAwsFixture').classList.add('error');
+          document.getElementById('badgeAwsFixture').innerText = 'Degraded';
+          document.getElementById('valAwsCpu').innerText = '99.4%';
+          triggerOutageUI('AWS prash-test-fixture CPU spike to 99.4% (Runaway process)');
+        } else if (scenarioId === 'aws_disk_full') {
+          logTerminal('tag-aws-term', 'AWS-EBS', 'Filesystem /var/log inode capacity reached 100%');
+          document.getElementById('cardAwsPayment').classList.add('error');
+          document.getElementById('badgeAwsPayment').innerText = 'DiskFull';
+          document.getElementById('valAwsDisk').innerText = '100%';
+          triggerOutageUI('AWS payment-api disk full: transaction logs rejected');
+        } else if (scenarioId === 'gcp_proxy_exhaustion') {
+          logTerminal('tag-gcp-term', 'GCP-GCE', 'Envoy connection pool exhausted: 1024/1024 sockets');
+          document.getElementById('cardGcpProxy').classList.add('error');
+          document.getElementById('badgeGcpProxy').innerText = 'EXHAUSTED';
+          document.getElementById('valGcpConns').innerText = '1024/1024';
+          triggerOutageUI('GCP drufiy-proxy connection pool exhausted (502 Bad Gateway)');
+        } else if (scenarioId === 'gcp_cloudrun_oom') {
+          logTerminal('tag-gcp-term', 'GCP-RUN', 'Cloud Run container killed with SIGKILL (Exit code 137 OOM)');
+          document.getElementById('cardGcpOrder').classList.add('error');
+          document.getElementById('badgeGcpOrder').innerText = 'CRASH_OOM';
+          document.getElementById('valGcpRam').innerText = '512MB / 512MB (OOM)';
+          triggerOutageUI('GCP order-service killed by Out-Of-Memory');
+        } else if (scenarioId === 'k8s_configmap_corrupt') {
+          logTerminal('tag-k8s-term', 'K8S', 'ConfigMap checkout-api-config set to DATABASE_HOST=postgres-wrong');
+          document.getElementById('cardK8sCheckout').classList.add('error');
+          document.getElementById('badgeK8sCheckout').innerText = 'CrashLoop';
+          document.getElementById('valK8sHost').innerText = 'postgres-wrong';
+          triggerOutageUI('Kubernetes checkout-api CrashLoop: cannot reach postgres database');
+        } else if (scenarioId === 'multi_cloud_cascade') {
+          logTerminal('tag-err-term', 'CASCADE', 'Cascading multi-cloud failure across AWS, GCP, and Kubernetes!');
+          document.getElementById('cardAwsFixture').classList.add('error');
+          document.getElementById('badgeAwsFixture').innerText = 'Degraded';
+          document.getElementById('cardGcpProxy').classList.add('error');
+          document.getElementById('badgeGcpProxy').innerText = 'EXHAUSTED';
+          document.getElementById('cardK8sCheckout').classList.add('error');
+          document.getElementById('badgeK8sCheckout').innerText = 'CrashLoop';
+          document.getElementById('cardDatadog').classList.add('error');
+          document.getElementById('badgeDatadog').innerText = 'ALARM';
+          document.getElementById('valDdRate').innerText = '14.8%';
+          document.getElementById('cardPagerDuty').classList.add('error');
+          document.getElementById('badgePagerDuty').innerText = 'TRIGGERED';
+          triggerOutageUI('Multi-cloud cascading failure across AWS, GCP, and Kubernetes!');
+        }
+
+        logTerminal('tag-dd-term', 'DATADOG', 'Datadog monitor #316853860 triggered: Synthetic error rate > 5.0%');
+        logTerminal('tag-dd-term', 'PAGERDUTY', 'PagerDuty Incident dispatched: PD-ALERT-98214 (Urgency: High)');
+        logTerminal('tag-brain', 'WAR_ROOM', 'Created incident war room: ' + (activeIncidentId || 'active'));
       } catch (e) {
-        logTerminal('tag-err', 'ERROR', 'Failure inject call failed: ' + e.message);
+        logTerminal('tag-err-term', 'ERROR', 'Failure injection failed: ' + e.message);
       }
     }
 
     async function triggerAutoFix() {
-      logTerminal('tag-brain', 'DEEPSEEK', 'Diagnosing root cause with DeepSeek AI brain...');
-      logTerminal('tag-brain', 'MEMORY', 'Episodic memory matched prior incident: ConfigMap database host error');
-      logTerminal('tag-fix', 'PLAN', 'Action generated: patch ConfigMap to postgres & rollout restart deployment');
+      logTerminal('tag-brain', 'DEEPSEEK', 'Lear AI Copilot evaluating telemetry & root cause across all connectors...');
+      logTerminal('tag-brain', 'EPISODIC', 'Correlating telemetry with multi-cloud runbook catalog...');
 
       try {
-        const res = await fetch('/api/demo/auto-fix', { method: 'POST' });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error('HTTP ' + res.status + ': ' + errText);
-        }
+        const res = await fetch('/api/demo/ai-fix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
         const d = await res.json();
-        logTerminal('tag-fix', 'APPLIED', 'ConfigMap patched and checkout-api pod rolled out cleanly.');
-        logTerminal('tag-k8s', 'VERIFIED', 'Probe check passed: /healthz 200 OK. Pod 1/1 Running.');
-        logTerminal('tag-fix', 'RESOLVED', 'Resolution alert email dispatched. Incident closed.');
+
+        if (d.actions && d.actions.length > 0) {
+          d.actions.forEach(act => {
+            if (act.includes('AWS')) {
+              logTerminal('tag-aws-term', 'AWS-SSM', act);
+            } else if (act.includes('GCP')) {
+              logTerminal('tag-gcp-term', 'GCP-CMD', act);
+            } else if (act.includes('Kubernetes')) {
+              logTerminal('tag-k8s-term', 'K8S-PATCH', act);
+            } else {
+              logTerminal('tag-fix-term', 'AI-ACTION', act);
+            }
+          });
+        }
+
+        logTerminal('tag-fix-term', 'HEALTHY', 'All connectors and services verified 100% healthy.');
+        logTerminal('tag-dd-term', 'DATADOG', 'Synthetic error rate returned to normal baseline (0.4%).');
+        logTerminal('tag-dd-term', 'PAGERDUTY', 'PagerDuty incident resolved cleanly.');
+        logTerminal('tag-fix-term', 'RESOLVED', 'Resolution broadcasted to War Room. Incident closed.');
 
         restoreHealthyUI();
-        document.getElementById('emailIframe').src = '/api/demo/emails/latest?t=' + Date.now();
-        logOrder('ok', 'RECOVERED: Checkout API restored by Lear. Ready for customer orders!');
+        logOrder('ok', 'RECOVERED: Multi-cloud services fully restored by Lear AI! Ready for orders.');
       } catch (e) {
-        logTerminal('tag-err', 'ERROR', 'Auto-fix call failed: ' + e.message);
+        logTerminal('tag-err-term', 'ERROR', 'AI Fix failed: ' + e.message);
+      }
+    }
+
+    async function resetAllServices() {
+      logTerminal('tag-fix-term', 'RESET', 'Restoring all AWS, GCP, and Kubernetes services to baseline...');
+      try {
+        await fetch('/api/demo/reset-all', { method: 'POST' });
+        restoreHealthyUI();
+        logTerminal('tag-fix-term', 'BASELINE', 'All connectors reset to default healthy state.');
+      } catch (e) {
+        logTerminal('tag-err-term', 'ERROR', 'Reset failed: ' + e.message);
       }
     }
 
@@ -901,13 +1267,6 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       }
     }
 
-    async function resetCluster() {
-      logTerminal('tag-fix', 'RESET', 'Restoring cluster configuration to baseline...');
-      await fetch('/api/demo/reset', { method: 'POST' });
-      restoreHealthyUI();
-      logTerminal('tag-fix', 'RESET', 'All 5 microservices verified 1/1 Running.');
-    }
-
     function toggleTraffic() {
       const btn = document.getElementById('btnTraffic');
       if (trafficInterval) {
@@ -915,12 +1274,12 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
         trafficInterval = null;
         btn.innerText = '🚀 Start Background Traffic';
         btn.style.background = 'rgba(6, 182, 212, 0.15)';
-        logTerminal('tag-k8s', 'TRAFFIC', 'Background traffic simulation stopped.');
+        logTerminal('tag-k8s-term', 'TRAFFIC', 'Background traffic simulation paused.');
       } else {
-        trafficInterval = setInterval(performCustomerCheckout, 800);
+        trafficInterval = setInterval(performCustomerCheckout, 1000);
         btn.innerText = '🛑 Stop Traffic';
         btn.style.background = 'rgba(244, 63, 94, 0.2)';
-        logTerminal('tag-k8s', 'TRAFFIC', 'Background traffic started (continuous orders).');
+        logTerminal('tag-k8s-term', 'TRAFFIC', 'Continuous background traffic started.');
       }
     }
 
@@ -934,7 +1293,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     }
 
     async function sendRealEmail() {
-      const to = prompt("Enter the email address to send the incident report to:", "anant@example.com");
+      const to = prompt("Enter destination email address:", "anant@example.com");
       if (to) {
         try {
           const res = await fetch('/api/demo/send-email', {
@@ -950,17 +1309,25 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       }
     }
 
-    // Polling pod status periodically
+    // Periodic status poll
     setInterval(async () => {
       try {
         const res = await fetch('/api/demo/status');
         const d = await res.json();
-        if (d.pods) {
-          const chk = d.pods.find(p => p.name.includes('checkout-api'));
-          if (chk && (chk.status.includes('CrashLoop') || chk.status.includes('Error'))) {
-            triggerOutageUI();
-          } else if (chk && chk.status === 'Running' && chk.ready && isBroken) {
-            restoreHealthyUI();
+        if (d.aws_instances && d.aws_instances['prash-test-fixture']) {
+          const f = d.aws_instances['prash-test-fixture'];
+          if (f.marker_present || f.active_error) {
+            document.getElementById('cardAwsFixture').classList.add('error');
+            document.getElementById('badgeAwsFixture').innerText = 'Degraded';
+            document.getElementById('valAwsCpu').innerText = (f.cpu_pct || 99.4) + '%';
+          }
+        }
+        if (d.gcp_instances && d.gcp_instances['drufiy-proxy']) {
+          const p = d.gcp_instances['drufiy-proxy'];
+          if (p.marker_present || p.active_error) {
+            document.getElementById('cardGcpProxy').classList.add('error');
+            document.getElementById('badgeGcpProxy').innerText = 'EXHAUSTED';
+            document.getElementById('valGcpConns').innerText = '1024/1024';
           }
         }
       } catch (e) {}

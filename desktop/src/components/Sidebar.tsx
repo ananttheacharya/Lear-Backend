@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Home, FolderGit2, Blocks, Bell, Settings, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Activity, Plus, Layers, Eye, X } from 'lucide-react';
+import { Home, FolderGit2, Blocks, Bell, Settings, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Activity, Plus, Layers, Eye, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLear } from '../context/LearContext';
 
@@ -57,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'demo', label: 'Demo Center', icon: Zap },
     { id: 'chat', label: 'Lear Chat', icon: Sparkles },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
     { id: 'integrations', label: 'Integrations', icon: Blocks },
