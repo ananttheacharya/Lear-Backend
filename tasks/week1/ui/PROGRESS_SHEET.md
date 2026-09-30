@@ -65,7 +65,7 @@ This is the final report for the current UI phase. It records completed work wit
 ## Verification
 
 - Frontend TypeScript/Vite build: passed.
-- Frontend behavioral tests: 14 passed across 3 files.
+- Frontend behavioral tests: 18 passed across 4 files.
 - `git diff --check`: passed.
 - Feature branch push: passed.
 - No secrets, credentials, `node_modules`, build output, caches or audio binaries committed.
