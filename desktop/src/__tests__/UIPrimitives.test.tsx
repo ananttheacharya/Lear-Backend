@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Skeleton, Tooltip } from '../components/ui';
 
 describe('Lear UI primitives', () => {
@@ -44,8 +44,7 @@ describe('Lear UI primitives', () => {
     const user = userEvent.setup();
     render(<Tooltip content="Live status"><button>Indicator</button></Tooltip>);
     await user.hover(screen.getByRole('button', { name: 'Indicator' }));
-    await new Promise(resolve => setTimeout(resolve, 320));
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Live status');
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Live status'), { timeout: 1000 });
   });
   it('renders a loading skeleton with the requested shape', () => {
     const { container } = render(<Skeleton variant="circular" width="2rem" height="2rem" />);
