@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
-from prash.middleware.security_headers import required_security_header_names
+from prash.middleware.security_headers import SecurityHeadersMiddleware, required_security_header_names
 from prash.server import app
 from scripts.security import secrets_audit
 
@@ -43,6 +45,47 @@ def test_security_headers_on_handled_error_response() -> None:
     assert response.status_code == 404
     _assert_required_security_headers(response)
     assert response.json()["code"] == "CONNECTOR_NOT_FOUND"
+
+
+def test_security_headers_on_streaming_response() -> None:
+    probe = FastAPI()
+    probe.add_middleware(SecurityHeadersMiddleware)
+
+    @probe.get("/stream")
+    def stream():
+        return StreamingResponse(iter(["one\n", "two\n"]), media_type="text/plain")
+
+    with TestClient(probe) as client:
+        response = client.get("/stream")
+    assert response.status_code == 200
+    assert response.text == "one\ntwo\n"
+    _assert_required_security_headers(response)
+
+
+def test_security_headers_respect_explicit_route_header() -> None:
+    probe = FastAPI()
+    probe.add_middleware(SecurityHeadersMiddleware)
+
+    @probe.get("/custom")
+    def custom():
+        return StreamingResponse(
+            iter(["ok"]),
+            media_type="text/plain",
+            headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+
+    with TestClient(probe) as client:
+        response = client.get("/custom")
+    _assert_required_security_headers(response)
+    assert response.headers["content-security-policy"] == "default-src 'none'"
+
+
+def test_security_headers_support_csp_environment_override(monkeypatch) -> None:
+    monkeypatch.setenv("LEAR_CSP", "default-src 'none'; connect-src 'self'")
+    with TestClient(app) as client:
+        response = client.get("/api/system/version")
+    assert response.status_code == 200
+    assert response.headers["content-security-policy"] == "default-src 'none'; connect-src 'self'"
 
 
 def test_secret_scanner_flags_realistic_provider_secret_assignment() -> None:
