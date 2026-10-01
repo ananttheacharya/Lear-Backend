@@ -6,7 +6,7 @@
 
 ## Summary
 
-This change set adds two production-grade security controls without changing endpoint behavior:
+This change set adds two production-grade security controls without changing endpoint behavior. A follow-up hardening pass also wires the checks into CI and adds a top-level security policy for contributors:
 
 1. **S-05 — Secrets audit and prevention**
    - Added gitleaks configuration and ignore scaffolding.
@@ -44,6 +44,8 @@ Added:
 - `scripts/security/install_hooks.py`
 - `scripts/security/secrets_audit.py`
 - `tests/test_security_hardening.py`
+- `.github/workflows/ci.yml` `security-hardening` job
+- `SECURITY.md`
 
 The committed hook runs in this order:
 
@@ -91,6 +93,11 @@ python scripts/security/secrets_audit.py --history --report /tmp/lear-history-se
 scripts/check_security_headers.sh http://127.0.0.1:8000
 pytest -q tests/test_security_hardening.py tests/test_desktop_api.py::test_CONFIG_MASKED_CREDENTIALS tests/test_desktop_api.py::test_SYSTEM_VERSION_DYNAMIC tests/test_gitleaks_connector.py::test_poll_state_never_leaks_the_actual_secret_value
 ```
+
+The GitHub Actions workflow now repeats the important portable checks on pull
+requests through a dedicated `security-hardening` job: checkout with full
+history, fallback working-tree scan, fallback history scan, focused security
+header tests, and a live uvicorn + curl header probe.
 
 Results:
 
