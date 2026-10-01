@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from prash.middleware.security_headers import SecurityHeadersMiddleware, required_security_header_names
 from prash.server import app
-from scripts.security import secrets_audit
+from scripts.security import check_security_headers, secrets_audit
 
 
 REQUIRED_HEADERS = tuple(name.lower() for name in required_security_header_names())
@@ -86,6 +86,25 @@ def test_security_headers_support_csp_environment_override(monkeypatch) -> None:
         response = client.get("/api/system/version")
     assert response.status_code == 200
     assert response.headers["content-security-policy"] == "default-src 'none'; connect-src 'self'"
+
+
+def test_python_security_header_checker_accepts_valid_headers() -> None:
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "Content-Security-Policy": "default-src 'self'; connect-src 'self' ws: wss:",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    }
+    assert check_security_headers.validate_headers(headers) == []
+
+
+def test_python_security_header_checker_reports_missing_and_bad_values() -> None:
+    failures = check_security_headers.validate_headers({"X-Frame-Options": "SAMEORIGIN"})
+    assert "X-Frame-Options expected 'DENY', got 'SAMEORIGIN'" in failures
+    assert "missing X-Content-Type-Options" in failures
+    assert any("Content-Security-Policy" in item for item in failures)
 
 
 def test_secret_scanner_flags_realistic_provider_secret_assignment() -> None:
