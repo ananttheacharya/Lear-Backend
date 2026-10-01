@@ -102,6 +102,7 @@ jobs:
             sleep 1
           done
           scripts/check_security_headers.sh http://127.0.0.1:8000
+          python scripts/security/check_security_headers.py http://127.0.0.1:8000
 
   # §6's Track B sub-task that was missed when the connector itself shipped:
   # "GitHub Actions cannot reach your cluster, so action tests won't run in
