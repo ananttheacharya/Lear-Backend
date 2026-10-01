@@ -26,6 +26,9 @@ binary.
 Manual scans:
 
 ```bash
+# One command, portable fallback scanner
+python scripts/security/verify_security_hardening.py
+
 # Working tree only
 python scripts/security/secrets_audit.py --working-tree
 
@@ -34,6 +37,10 @@ python scripts/security/secrets_audit.py --history
 
 # Preferred when gitleaks is installed
 gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+
+# Bash / PowerShell wrappers
+scripts/security/run_secret_audit.sh
+./scripts/security/run_secret_audit.ps1
 ```
 
 Do not commit raw `gitleaks-report.json` files. They can reveal sensitive file

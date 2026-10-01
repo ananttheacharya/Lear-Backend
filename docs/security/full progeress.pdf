@@ -10,7 +10,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 4 0 obj
-<< /Length 3127 >>
+<< /Length 3143 >>
 stream
 BT
 /F1 10.5 Tf
@@ -32,11 +32,15 @@ T*
 T*
 (hardening within limits. S-05 now has committed secret scanning configuration, a versioned) Tj
 T*
-(pre-commit hook, a gitleaks-compatible workflow, a bundled redacted fallback scanner, and CI) Tj
+(pre-commit hook, a gitleaks-compatible workflow, a bundled redacted fallback scanner, cross-) Tj
 T*
-(enforcement. S-06 now has ASGI-level HTTP security headers applied to every HTTP response) Tj
+(platform verification scripts, a PR checklist, and CI enforcement. S-06 now has ASGI-level) Tj
 T*
-(path tested: JSON, HTML, streaming-compatible responses, and handled API errors.) Tj
+(HTTP security headers applied to every HTTP response path tested: JSON, HTML, streaming-) Tj
+T*
+(compatible responses, explicit route policy preservation, CSP override, and handled API) Tj
+T*
+(errors.) Tj
 T*
 () Tj
 T*
@@ -78,19 +82,23 @@ T*
 T*
 (tree, and full-history scans.) Tj
 T*
-(6. Replaced realistic-looking unit-test token literals with clearly non-secret placeholders.) Tj
+(6. Added Bash and PowerShell wrappers: run_secret_audit.sh and run_secret_audit.ps1.) Tj
 T*
-(7. Added .gitignore coverage for secret-scan report files so raw reports are not committed.) Tj
+(7. Added scripts/security/verify_security_hardening.py as one command for reviewer) Tj
 T*
-(8. Verified a staged fake provider secret is blocked by the pre-commit hook.) Tj
+(verification.) Tj
 T*
-(9. Added a CI security-hardening job that checks out full history and reruns portable scans) Tj
+(8. Replaced realistic-looking unit-test token literals with clearly non-secret placeholders.) Tj
+T*
+(9. Added .gitignore coverage for secret-scan report files so raw reports are not committed.) Tj
+T*
+(10. Verified a staged fake provider secret is blocked by the pre-commit hook.) Tj
+T*
+(11. Added a CI security-hardening job that checks out full history and reruns portable scans) Tj
 T*
 (on pull requests.) Tj
 T*
-(10. Added SECURITY.md with contributor instructions for secret handling and vulnerability) Tj
-T*
-(reporting.) Tj
+(12. Added SECURITY.md and a PR template security checklist.) Tj
 T*
 () Tj
 T*
@@ -103,14 +111,6 @@ T*
 (- Full-history fallback scan returned zero findings.) Tj
 T*
 (- Pre-commit fake-secret probe exited non-zero and showed only redacted excerpts.) Tj
-T*
-(- CI is now configured to repeat working-tree and full-history fallback scans with fetch-) Tj
-T*
-(depth 0.) Tj
-T*
-(- Gitleaks release download was attempted multiple ways, but this sandbox could not fetch) Tj
-T*
-(the GitHub release asset; see limitations.) Tj
 ET
 endstream
 endobj
@@ -118,12 +118,20 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
 endobj
 6 0 obj
-<< /Length 3363 >>
+<< /Length 3415 >>
 stream
 BT
 /F1 10.5 Tf
 50 780 Td
 14 TL
+(- CI is now configured to repeat working-tree and full-history fallback scans with fetch-) Tj
+T*
+(depth 0.) Tj
+T*
+(- Gitleaks release download was attempted multiple ways, but this sandbox could not fetch) Tj
+T*
+(the GitHub release asset; see limitations.) Tj
+T*
 () Tj
 T*
 (S-06 WHAT CHANGED) Tj
@@ -134,15 +142,19 @@ T*
 T*
 (3. Added scripts/check_security_headers.sh for live curl validation.) Tj
 T*
-(4. Added tests/test_security_hardening.py covering JSON, HTML, streaming, explicit route) Tj
+(4. Added scripts/check_security_headers.ps1 for Windows PowerShell validation.) Tj
+T*
+(5. Added scripts/security/check_security_headers.py for cross-platform Python validation.) Tj
+T*
+(6. Added tests/test_security_hardening.py covering JSON, HTML, streaming, explicit route) Tj
 T*
 (policy preservation, environment CSP override, and handled error responses.) Tj
 T*
-(5. Declared python-multipart because FastAPI validates File\(\)/UploadFile routes at import) Tj
+(7. Declared python-multipart because FastAPI validates File\(\)/UploadFile routes at import) Tj
 T*
 (time and clean installs could not collect prash.server tests without it.) Tj
 T*
-(6. Added CI live uvicorn + curl header verification.) Tj
+(8. Added CI live uvicorn plus Bash and Python header verification.) Tj
 T*
 () Tj
 T*
@@ -176,7 +188,9 @@ T*
 T*
 (and documented. CI now repeats the most important portable checks so the reviewer sees) Tj
 T*
-(ongoing enforcement, not only a one-time local scan.) Tj
+(ongoing enforcement, not only a one-time local scan. Cross-platform wrappers make the) Tj
+T*
+(verification path usable on Linux, macOS, and Windows.) Tj
 T*
 () Tj
 T*
@@ -205,12 +219,24 @@ T*
 (The current HEAD removes realistic-looking literals, and the scanner exact-allowlists only) Tj
 T*
 (known fake historical fixture values.) Tj
-T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 906 >>
+stream
+BT
+/F1 10.5 Tf
+50 780 Td
+14 TL
 () Tj
 T*
 (TEST RESULTS) Tj
 T*
-(Targeted security tests passed. Live header validation passed through) Tj
+(Focused security tests passed. Live header validation passed through) Tj
 T*
 (scripts/check_security_headers.sh against uvicorn on localhost:8000. Working-tree and full-) Tj
 T*
@@ -219,64 +245,18 @@ T*
 (local run of desktop/gitleaks/security tests surfaced two pre-existing chat/LLM expectation) Tj
 T*
 (failures unrelated to S-05 or S-06; these were documented in PRASH_V2.md rather than hidden.) Tj
-ET
-endstream
-endobj
-7 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
-endobj
-8 0 obj
-<< /Length 1156 >>
-stream
-BT
-/F1 10.5 Tf
-50 780 Td
-14 TL
-() Tj
-T*
-(COMMITS CREATED IN THIS SECURITY BRANCH) Tj
-T*
-(1. security: add secret audit guardrails) Tj
-T*
-(2. security: add secure headers middleware) Tj
-T*
-(3. docs: record S-05 and S-06 completion) Tj
-T*
-(4. docs: add full progress PDF) Tj
-T*
-(5. ci: enforce security hardening checks) Tj
-T*
-(6. docs: add security policy) Tj
-T*
-(7. test: expand security hardening coverage) Tj
-T*
-(8. docs: refresh security completion report) Tj
-T*
-() Tj
-T*
-(REVIEWER QUICKSTART) Tj
-T*
-(Run these commands after pulling the branch:) Tj
-T*
-(python scripts/security/install_hooks.py) Tj
-T*
-(python scripts/security/secrets_audit.py --working-tree) Tj
-T*
-(python scripts/security/secrets_audit.py --history) Tj
-T*
-(scripts/check_security_headers.sh http://localhost:8000) Tj
-T*
-(pytest -q tests/test_security_hardening.py) Tj
 T*
 () Tj
 T*
 (FINAL STATUS) Tj
 T*
-(S-05: Completed with committed gitleaks config, hook, fallback scanner, CI, docs, and) Tj
+(S-05: Completed with committed gitleaks config, hook, fallback scanner, wrappers, CI, docs,) Tj
 T*
-(verification.) Tj
+(PR checklist, and verification.) Tj
 T*
-(S-06: Completed with middleware, live check script, CI verification, and expanded tests.) Tj
+(S-06: Completed with middleware, Bash/Python/PowerShell live check scripts, CI verification,) Tj
+T*
+(and expanded tests.) Tj
 T*
 (Fork branch is ahead of main and ready for PR review.) Tj
 T*
@@ -294,13 +274,13 @@ xref
 0000000064 00000 n 
 0000000133 00000 n 
 0000000203 00000 n 
-0000003382 00000 n 
-0000003508 00000 n 
-0000006923 00000 n 
-0000007049 00000 n 
-0000008257 00000 n 
+0000003398 00000 n 
+0000003524 00000 n 
+0000006991 00000 n 
+0000007117 00000 n 
+0000008074 00000 n 
 trailer
 << /Size 10 /Root 1 0 R >>
 startxref
-8383
+8200
 %%EOF

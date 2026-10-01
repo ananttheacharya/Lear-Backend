@@ -46,6 +46,9 @@ Added:
 - `tests/test_security_hardening.py`
 - `.github/workflows/ci.yml` `security-hardening` job
 - `SECURITY.md`
+- `docs/security/REVIEWER_QUICKSTART.md`
+- `docs/security/SECURITY_HEADERS.md`
+- cross-platform Bash, PowerShell, and Python verification wrappers
 
 The committed hook runs in this order:
 
