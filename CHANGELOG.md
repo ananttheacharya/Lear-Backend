@@ -144,6 +144,8 @@ All notable changes to this project will be documented in this file.
 - **AWS Connector — registered and hardened**: `AWSConnector` is now registered in `prash/cli.py`'s `PROVIDERS`, making `prash investigate <resource> --provider aws` usable. `authenticate()` now caches its result per connector instance instead of re-hitting STS on every method call. `read_capabilities` corrected from copy-pasted Kubernetes names (`pod_status`) to `instance_status`/`logs`. `execute_command` remains unwired to any dispatcher action — read-only only, per spec.
 
 ### Security
+- **S-06 Secure HTTP Headers Middleware**: Added ASGI-level `SecurityHeadersMiddleware` so JSON, HTML, streaming, preflight, and handled error responses receive `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `Referrer-Policy`, and `Permissions-Policy`. Added `scripts/check_security_headers.sh` plus tests covering JSON, HTML, and error responses.
+- **S-05 Secrets Audit and Pre-Commit Leak Guard**: Added `.gitleaks.toml`, `.gitleaksignore`, `.pre-commit-config.yaml`, a versioned `.githooks/pre-commit`, `scripts/security/install_hooks.py`, and a redacted fallback scanner (`scripts/security/secrets_audit.py`) that blocks staged provider-token patterns even when `gitleaks` is not installed. Replaced realistic-looking test token literals with non-secret placeholders.
 - **Hardcoded Secret Removal**: Removed hardcoded Gemini API keys from `test_live_infra.py` to fix GitHub push protection (GH013) violations. Secrets are now securely loaded from `.env` via `os.getenv`, and `.env.example` has been updated with the corresponding templates.
 
 ### Changed

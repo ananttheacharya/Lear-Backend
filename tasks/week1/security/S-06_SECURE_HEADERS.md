@@ -2,7 +2,7 @@
 
 **Owner:** Avi
 **Priority:** P1
-**Status:** ⬜ Not Started
+**Status:** ✅ Done — 2026-10-01
 **Estimated effort:** 0.5 day
 **Depends on:** Nothing
 **Blocks:** Nothing

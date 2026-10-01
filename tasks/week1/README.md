@@ -15,8 +15,8 @@
 | S-02 | Rate limiting middleware | Parv | P0 | ⬜ Not Started |
 | S-03 | CORS lockdown | Parv | P0 | ⬜ Not Started |
 | S-04 | Credential rotation and expiry detection | Aryan | P1 | ⬜ Not Started |
-| S-05 | Secrets audit: scan codebase for leaked patterns | Parv | P0 | ⬜ Not Started |
-| S-06 | Secure HTTP headers middleware | Parv | P1 | ⬜ Not Started |
+| S-05 | Secrets audit: scan codebase for leaked patterns | Parv | P0 | ✅ Done 2026-10-01 |
+| S-06 | Secure HTTP headers middleware | Parv | P1 | ✅ Done 2026-10-01 |
 | S-07 | WebSocket authentication | Aryan | P1 | ⬜ Not Started |
 
 ### Backend Decomposition
