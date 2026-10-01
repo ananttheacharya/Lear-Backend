@@ -32,6 +32,10 @@ dependencies = [
     "uvicorn>=0.20.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
+    # FastAPI validates File()/UploadFile routes at import time; the desktop
+    # bridge exposes /api/chat/upload, so clean installs need python-multipart
+    # before tests can even collect prash.server.
+    "python-multipart>=0.0.9",
 ]
 
 # The desktop app's local backend (prash/server.py + prash/connector_registry.py)
