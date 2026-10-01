@@ -1,0 +1,19 @@
+title = "Lear Backend Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Repo-wide known non-secret placeholders only; do not add real leaked values here."
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+  '''ghp_secretTokenLongerValue123456''',
+  '''AKIASUPERSECRETVALUE''',
+  '''(?i)(example|fake|dummy|mock|placeholder|changeme|redacted|not[-_]?a[-_]?secret|test[-_]?only)''',
+]
+paths = [
+  '''(^|/)\.gitleaksignore$''',
+  '''(^|/)uv\.lock$''',
+  '''(^|/)desktop/package-lock\.json$''',
+]

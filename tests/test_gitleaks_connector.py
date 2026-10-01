@@ -110,13 +110,13 @@ def test_poll_state_never_leaks_the_actual_secret_value(monkeypatch, tmp_path):
     """The critical safety property: gitleaks' own report includes the raw
     matched secret text in Match/Secret -- neither must ever reach the
     connector's output, matching this repo's edit-secret precedent."""
-    findings = [{"RuleID": "aws-access-key", "File": ".env", "StartLine": 3, "Fingerprint": "xyz", "Secret": "AKIASUPERSECRETVALUE", "Match": "AWS_KEY=AKIASUPERSECRETVALUE"}]
+    findings = [{"RuleID": "aws-access-key", "File": ".env", "StartLine": 3, "Fingerprint": "xyz", "Secret": "SECRET_VALUE_SHOULD_NOT_ESCAPE", "Match": "AWS_KEY=SECRET_VALUE_SHOULD_NOT_ESCAPE"}]
     monkeypatch.setattr("shutil.which", lambda name: "/usr/local/bin/gitleaks")
     monkeypatch.setattr(subprocess, "run", _fake_run_writing_report(findings))
     gl = GitleaksConnector({})
     state = gl.poll_state(str(tmp_path))
     dumped = json.dumps(state.detail)
-    assert "AKIASUPERSECRETVALUE" not in dumped
+    assert "SECRET_VALUE_SHOULD_NOT_ESCAPE" not in dumped
 
 
 def test_run_scan_raises_on_nonzero_exit(monkeypatch, tmp_path):

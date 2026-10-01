@@ -1,0 +1,6 @@
+# Gitleaks finding fingerprints that were manually triaged as false positives.
+#
+# S-05 status on 2026-10-01: no active findings require fingerprint ignores.
+# Keep this file intentionally narrow: do not ignore entire source files or real
+# leaked values. If gitleaks reports a fixture-only false positive, add the exact
+# fingerprint here with a one-line reason and date.
