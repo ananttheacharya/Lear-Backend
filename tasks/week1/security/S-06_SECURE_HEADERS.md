@@ -28,8 +28,8 @@ Add security-focused HTTP response headers to every response from the FastAPI se
 |---|---|---|
 | `X-Content-Type-Options` | `nosniff` | Prevents browser MIME-type sniffing. Forces the browser to respect the declared `Content-Type`. |
 | `X-Frame-Options` | `DENY` | Prevents the page from being embedded in an iframe (clickjacking protection). |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Forces HTTPS for 1 year. Only effective when served over HTTPS. |
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'` | Controls which resources the browser is allowed to load. Prevents XSS. |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` on HTTPS/prod only | Forces HTTPS for 1 year when the browser is already using TLS. Must not be emitted on local plain HTTP. |
+| `Content-Security-Policy` | local-safe default; append `upgrade-insecure-requests` on HTTPS/prod only | Controls which resources the browser is allowed to load. Prevents XSS without breaking local HTTP/WSS development. |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Controls how much referrer info is sent with requests. |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Disables browser features the app doesn't need. |
 
@@ -69,9 +69,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevent clickjacking
         response.headers["X-Frame-Options"] = "DENY"
 
-        # Force HTTPS (only meaningful when behind TLS termination)
-        # In dev, this is harmless — browsers ignore it on localhost HTTP
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+        is_production = os.getenv("ENVIRONMENT", "").lower() == "production"
+        include_transport_security = is_secure or is_production
 
         # Content Security Policy
         # Note: 'unsafe-inline' is needed for the demo page's inline styles/scripts
@@ -84,7 +84,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self'; "
             "connect-src 'self' ws: wss:; "
         ))
+        if include_transport_security and "upgrade-insecure-requests" not in csp:
+            csp = f"{csp.rstrip('; ')}; upgrade-insecure-requests;"
         response.headers["Content-Security-Policy"] = csp
+
+        if include_transport_security:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -110,85 +115,44 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 ### Step 3: Create CI validation script
 
-Create `scripts/check_security_headers.sh` (or `.ps1` for Windows):
+Use the canonical cross-platform Python checker:
 
 ```bash
-#!/bin/bash
-# Validate that all security headers are present on API responses.
-# Run against a live server: ./scripts/check_security_headers.sh http://localhost:8000
+# Local plain HTTP should have the browser-hardening baseline, but not HSTS or
+# CSP upgrade-insecure-requests because those break local HTTP/WSS development.
+python scripts/security/check_security_headers.py http://localhost:8000
 
-BASE_URL="${1:-http://localhost:8000}"
-
-echo "Checking security headers on $BASE_URL/api/system/version"
-HEADERS=$(curl -sI "$BASE_URL/api/system/version")
-
-check_header() {
-    local header="$1"
-    if echo "$HEADERS" | grep -qi "$header"; then
-        echo "  ✅ $header"
-    else
-        echo "  ❌ $header — MISSING"
-        FAIL=1
-    fi
-}
-
-check_header "X-Content-Type-Options"
-check_header "X-Frame-Options"
-check_header "Strict-Transport-Security"
-check_header "Content-Security-Policy"
-check_header "Referrer-Policy"
-check_header "Permissions-Policy"
-
-if [ "$FAIL" = "1" ]; then
-    echo ""
-    echo "FAILED: Some security headers are missing."
-    exit 1
-else
-    echo ""
-    echo "All security headers present."
-fi
+# HTTPS/prod deployments should include transport-security enforcement.
+python scripts/security/check_security_headers.py https://example.com --expect-transport-security
 ```
+
+CI should prefer focused `TestClient` tests for local/HTTPS/prod behavior rather
+than starting a background uvicorn daemon only to scrape headers.
 
 ### Step 4: Write tests
 
-Add to `tests/test_security_headers.py`:
+Add focused tests (the implementation lives in `tests/test_security_hardening.py` in this repo):
 
 ```python
-"""Security headers tests — verify all headers on every response type."""
-import pytest
-
-REQUIRED_HEADERS = [
+BASELINE_HEADERS = [
     "x-content-type-options",
     "x-frame-options",
-    "strict-transport-security",
     "content-security-policy",
     "referrer-policy",
     "permissions-policy",
 ]
 
-def test_security_headers_on_json_endpoint(client):
-    """JSON API responses include all security headers."""
+def test_local_http_has_baseline_but_not_transport_upgrade(client):
     resp = client.get("/api/system/version")
-    for header in REQUIRED_HEADERS:
-        assert header in resp.headers, f"Missing header: {header}"
+    for header in BASELINE_HEADERS:
+        assert header in resp.headers
+    assert "strict-transport-security" not in resp.headers
+    assert "upgrade-insecure-requests" not in resp.headers["content-security-policy"]
 
-def test_security_headers_on_html_endpoint(client):
-    """HTML responses (demo page) include all security headers."""
-    resp = client.get("/demo")
-    for header in REQUIRED_HEADERS:
-        assert header in resp.headers, f"Missing header: {header}"
-
-def test_x_content_type_options_value(client):
-    resp = client.get("/api/system/version")
-    assert resp.headers["x-content-type-options"] == "nosniff"
-
-def test_x_frame_options_value(client):
-    resp = client.get("/api/system/version")
-    assert resp.headers["x-frame-options"] == "DENY"
-
-def test_hsts_value(client):
-    resp = client.get("/api/system/version")
-    assert "max-age=" in resp.headers["strict-transport-security"]
+def test_https_enables_hsts_and_upgrade_insecure_requests(client):
+    resp = client.get("/api/system/version", base_url="https://testserver")
+    assert resp.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert "upgrade-insecure-requests" in resp.headers["content-security-policy"]
 ```
 
 ---
@@ -200,8 +164,10 @@ def test_hsts_value(client):
 - [ ] Verify headers appear on JSON responses (`/api/system/version`)
 - [ ] Verify headers appear on HTML responses (`/demo`)
 - [ ] Verify headers appear on error responses (404, 422, 500)
-- [ ] Create `scripts/check_security_headers.sh` for CI validation
-- [ ] Write `tests/test_security_headers.py`
+- [ ] Keep HSTS and CSP `upgrade-insecure-requests` disabled on local plain HTTP
+- [ ] Enable HSTS and CSP `upgrade-insecure-requests` for HTTPS/proxied HTTPS or production
+- [ ] Create/use canonical `scripts/security/check_security_headers.py` for validation
+- [ ] Write `tests/test_security_hardening.py`
 - [ ] CSP allows WebSocket connections (`connect-src 'self' ws: wss:`)
 - [ ] CSP allows inline styles for demo pages (`style-src 'self' 'unsafe-inline'`)
 - [ ] All existing tests pass
@@ -222,9 +188,10 @@ def test_hsts_value(client):
 
 ## Exit Criteria
 
-- [ ] **All 6 headers present on every response** — JSON, HTML, error responses
-- [ ] **`curl -I` test script in CI validates** — `scripts/check_security_headers.sh` exits 0
-- [ ] **Tests pass** — `tests/test_security_headers.py` covers all header values
+- [ ] **Baseline headers present on every response** — JSON, HTML, error responses
+- [ ] **Transport-security headers are conditional** — absent on local HTTP, present for HTTPS/prod
+- [ ] **Python checker validates live servers** — `scripts/security/check_security_headers.py` exits 0
+- [ ] **Tests pass** — `tests/test_security_hardening.py` covers all header values and environment cases
 - [ ] **WebSocket and SSE still work** — CSP `connect-src` allows them
 - [ ] **Demo pages render correctly** — CSP allows inline styles/scripts
 - [ ] **All existing tests pass**

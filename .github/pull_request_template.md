@@ -8,7 +8,7 @@
 - [ ] `python scripts/security/secrets_audit.py --working-tree` passes.
 - [ ] If touching committed history or fixtures, `python scripts/security/secrets_audit.py --history` passes.
 - [ ] If touching FastAPI/server responses, `pytest -q tests/test_security_hardening.py` passes.
-- [ ] If changing HTTP middleware, `scripts/check_security_headers.sh http://localhost:8000` or the Python/PowerShell equivalent passes against a live server.
+- [ ] If changing HTTP middleware, `python scripts/security/check_security_headers.py http://localhost:8000` passes against a live server, or `pytest -q tests/test_security_hardening.py` covers the change without a daemon.
 - [ ] New config keys are documented in `.env.example` or docs, with placeholders only.
 
 ## Tests run

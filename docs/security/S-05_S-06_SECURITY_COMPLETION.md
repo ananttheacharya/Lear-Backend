@@ -1,7 +1,7 @@
 # S-05 / S-06 Security Completion Report
 
-**Date:** 2026-10-01  
-**Branch:** `arena/01a0f7f6-lear-backend-avi`  
+**Date:** 2026-10-03
+**Branch:** `arena/01a0f7f6-lear-backend-avi`
 **Scope:** S-05 secrets audit and S-06 secure HTTP response headers.
 
 ## Summary
@@ -19,8 +19,8 @@ This change set adds two production-grade security controls without changing end
 2. **S-06 — Secure HTTP headers**
    - Added ASGI-level `SecurityHeadersMiddleware` to `prash.server`.
    - Headers are injected at the raw `http.response.start` event, covering JSON responses, HTML pages, streaming/SSE responses, CORS/preflight responses, and handled API errors.
-   - Added automated tests for JSON, HTML, and handled error responses.
-   - Added a curl validation script for live-server checks.
+   - Added automated tests for JSON, HTML, streaming, handled error responses, CSP overrides, and HTTPS/production transport behavior.
+   - Added a single canonical Python validation script for optional live-server checks.
 
 ## Prior security posture
 
@@ -48,7 +48,7 @@ Added:
 - `SECURITY.md`
 - `docs/security/REVIEWER_QUICKSTART.md`
 - `docs/security/SECURITY_HEADERS.md`
-- cross-platform Bash, PowerShell, and Python verification wrappers
+- canonical Python verification scripts (`check_security_headers.py`, `verify_security_hardening.py`)
 
 The committed hook runs in this order:
 
@@ -74,12 +74,12 @@ Every HTTP response now receives:
 |---|---|
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
-| `Content-Security-Policy` | compatible default policy for the current inline demo/admin pages |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` only on HTTPS or production |
+| `Content-Security-Policy` | local-safe default policy; adds `upgrade-insecure-requests` only on HTTPS or production |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
 
-The CSP is intentionally compatible with the existing demo/admin HTML surfaces, which still use inline scripts/styles. Deployments can tighten it with `LEAR_CSP` after those pages move to external assets.
+The CSP is intentionally compatible with the existing demo/admin HTML surfaces, which still use inline scripts/styles. HSTS and `upgrade-insecure-requests` are deliberately absent on local plain HTTP so the desktop/dev server is not forced into HTTPS/WSS. Deployments can tighten CSP with `LEAR_CSP` after demo pages move to external assets.
 
 ## What could not be changed here
 
@@ -93,22 +93,22 @@ The CSP is intentionally compatible with the existing demo/admin HTML surfaces, 
 python scripts/security/install_hooks.py
 python scripts/security/secrets_audit.py --working-tree --report /tmp/lear-working-secret-report.json
 python scripts/security/secrets_audit.py --history --report /tmp/lear-history-secret-report.json
-scripts/check_security_headers.sh http://127.0.0.1:8000
+python scripts/security/check_security_headers.py http://127.0.0.1:8000
 pytest -q tests/test_security_hardening.py tests/test_desktop_api.py::test_CONFIG_MASKED_CREDENTIALS tests/test_desktop_api.py::test_SYSTEM_VERSION_DYNAMIC tests/test_gitleaks_connector.py::test_poll_state_never_leaks_the_actual_secret_value
 ```
 
 The GitHub Actions workflow now repeats the important portable checks on pull
 requests through a dedicated `security-hardening` job: checkout with full
-history, fallback working-tree scan, fallback history scan, focused security
-header tests, and a live uvicorn + curl header probe.
+history, fallback working-tree scan, fallback history scan, and focused security
+header/checker tests without a flaky background uvicorn daemon.
 
 Results:
 
 - Working-tree secret scan: **0 findings**.
 - Full-history fallback scan: **0 findings**.
 - Pre-commit hook fake-secret probe: **blocked** with redacted output.
-- Live HTTP header script: **all six headers present**.
-- Targeted tests: **8 passed**.
+- HTTP header checker: **local HTTP omits transport-only headers; HTTPS/prod expects them**.
+- Targeted tests: **security hardening suite passing locally**.
 
 A broader local run of `tests/test_desktop_api.py tests/test_gitleaks_connector.py tests/test_security_hardening.py` passed 45 tests and surfaced two pre-existing chat/LLM test failures unrelated to S-05/S-06. They are documented in `PRASH_V2.md` rather than hidden.
 

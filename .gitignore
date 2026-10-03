@@ -47,6 +47,9 @@ Thumbs.db
 gitleaks-report*.json
 *.gitleaks-report.json
 
+# Keep compiled security reports out of git; source Markdown stays versioned.
+docs/security/*.pdf
+
 # Terraform
 .terraform/
 *.tfstate

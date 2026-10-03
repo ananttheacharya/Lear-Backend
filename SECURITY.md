@@ -38,9 +38,6 @@ python scripts/security/secrets_audit.py --history
 # Preferred when gitleaks is installed
 gitleaks detect --source . --config .gitleaks.toml --redact --verbose
 
-# Bash / PowerShell wrappers
-scripts/security/run_secret_audit.sh
-./scripts/security/run_secret_audit.ps1
 ```
 
 Do not commit raw `gitleaks-report.json` files. They can reveal sensitive file
@@ -53,13 +50,15 @@ The FastAPI bridge applies the S-06 browser hardening headers from
 response. Validate a running server with:
 
 ```bash
-scripts/check_security_headers.sh http://localhost:8000
+python scripts/security/check_security_headers.py http://localhost:8000
 ```
 
 The current default Content Security Policy intentionally allows inline scripts
-and styles because the demo/admin HTML pages still use inline assets. Production
-deployments that have externalized those assets can set `LEAR_CSP` to a stricter
-policy without code changes.
+and styles because the demo/admin HTML pages still use inline assets. HSTS and
+CSP `upgrade-insecure-requests` are emitted only for HTTPS/proxied HTTPS or
+`ENVIRONMENT=production`, not for local plain HTTP. Production deployments that
+have externalized inline assets can set `LEAR_CSP` to a stricter policy without
+code changes.
 
 ## Credential handling rules
 

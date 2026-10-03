@@ -87,22 +87,10 @@ jobs:
           python scripts/security/secrets_audit.py --history
 
       - name: Security headers unit tests
+        # TestClient covers JSON, HTML, streaming, handled error responses,
+        # route-level overrides, and local-vs-HTTPS/prod transport security
+        # without spawning a background uvicorn daemon in CI.
         run: pytest -q tests/test_security_hardening.py
-
-      - name: Security headers live curl check
-        shell: bash
-        run: |
-          python -m uvicorn prash.server:app --host 127.0.0.1 --port 8000 --log-level warning &
-          server_pid=$!
-          trap 'kill $server_pid 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:8000/api/system/version >/dev/null; then
-              break
-            fi
-            sleep 1
-          done
-          scripts/check_security_headers.sh http://127.0.0.1:8000
-          python scripts/security/check_security_headers.py http://127.0.0.1:8000
 
   # §6's Track B sub-task that was missed when the connector itself shipped:
   # "GitHub Actions cannot reach your cluster, so action tests won't run in

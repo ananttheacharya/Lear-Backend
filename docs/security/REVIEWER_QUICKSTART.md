@@ -61,14 +61,13 @@ python -m uvicorn prash.server:app --host 127.0.0.1 --port 8000
 Terminal 2:
 
 ```bash
-scripts/check_security_headers.sh http://127.0.0.1:8000
 python scripts/security/check_security_headers.py http://127.0.0.1:8000
 ```
 
-Windows PowerShell alternative:
+For HTTPS/prod-style validation, use an HTTPS URL or pass:
 
-```powershell
-./scripts/check_security_headers.ps1 http://127.0.0.1:8000
+```bash
+python scripts/security/check_security_headers.py https://example.com --expect-transport-security
 ```
 
 ## 6. Focused tests
@@ -80,6 +79,6 @@ pytest -q tests/test_security_hardening.py
 ## Expected result
 
 - Secret scans report zero findings.
-- Security header checks report all required headers present.
+- Security header checks report the local baseline present and transport-security headers only for HTTPS/prod.
 - Focused tests pass.
 - Pre-commit blocks staged provider-token patterns before a commit is created.

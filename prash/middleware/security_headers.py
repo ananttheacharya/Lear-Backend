@@ -5,17 +5,32 @@ surfaces used for demos/incidents. This ASGI middleware injects browser security
 headers at the raw ``http.response.start`` event so normal JSON responses,
 streaming responses, redirects, and handled error responses all receive the same
 baseline protection.
+
+Lear is local-first: the development server normally runs as plain HTTP on
+localhost. Transport-upgrade controls (HSTS and ``upgrade-insecure-requests``)
+are therefore intentionally enabled only when the request is already HTTPS (or a
+TLS terminator tells us it was HTTPS) or when the deployment explicitly marks
+itself production.
 """
 from __future__ import annotations
 
 import os
-from starlette.datastructures import MutableHeaders
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+HSTS_VALUE = "max-age=31536000; includeSubDomains"
+
+BASE_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
 
 # Keep this compatible with the existing inline demo/admin pages while still
 # blocking high-risk defaults. The value is overrideable for deployments that
 # can move inline scripts/styles to external assets and tighten the policy.
-DEFAULT_CONTENT_SECURITY_POLICY = (
+DEFAULT_LOCAL_CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "base-uri 'self'; "
     "object-src 'none'; "
@@ -25,31 +40,58 @@ DEFAULT_CONTENT_SECURITY_POLICY = (
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "font-src 'self' data:; "
-    "connect-src 'self' http: https: ws: wss:; "
-    "upgrade-insecure-requests"
+    "connect-src 'self' http: https: ws: wss:;"
 )
 
-SECURITY_HEADERS = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": DEFAULT_CONTENT_SECURITY_POLICY,
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-}
+
+def _is_production() -> bool:
+    """Return True when the process is explicitly running as production.
+
+    ``ENVIRONMENT`` is the primary knob because it was requested in review.
+    ``LEAR_ENVIRONMENT`` and ``PRASH_ENVIRONMENT`` are accepted as aliases so
+    packagers can avoid overloading a generic variable if needed.
+    """
+    for key in ("ENVIRONMENT", "LEAR_ENVIRONMENT", "PRASH_ENVIRONMENT"):
+        if os.getenv(key, "").strip().lower() == "production":
+            return True
+    return False
 
 
-def security_headers() -> dict[str, str]:
-    """Return the headers to apply.
+def _scope_is_https(scope: Scope) -> bool:
+    """Detect HTTPS from ASGI scope and common proxy forwarding headers."""
+    if scope.get("scheme") == "https":
+        return True
+    headers = Headers(scope=scope)
+    forwarded_proto = headers.get("x-forwarded-proto", "")
+    if forwarded_proto.split(",", 1)[0].strip().lower() == "https":
+        return True
+    forwarded_ssl = headers.get("x-forwarded-ssl", "").strip().lower()
+    return forwarded_ssl in {"on", "1", "true"}
+
+
+def security_headers(*, is_https: bool = False) -> dict[str, str]:
+    """Return security headers for this response.
 
     ``LEAR_CSP`` lets production deployments ship a stricter CSP without code
-    changes. Other header values stay fixed because loosening them silently would
-    defeat the purpose of this middleware.
+    changes. HSTS and CSP's ``upgrade-insecure-requests`` are added only for
+    secure/prod contexts so local HTTP desktop development does not get forced
+    into HTTPS/WSS and break Uvicorn/WebSocket flows.
     """
-    headers = dict(SECURITY_HEADERS)
+    headers = dict(BASE_SECURITY_HEADERS)
+    transport_secure = is_https or _is_production()
+
     csp_override = os.getenv("LEAR_CSP")
     if csp_override:
-        headers["Content-Security-Policy"] = csp_override
+        csp = csp_override
+    else:
+        csp = DEFAULT_LOCAL_CONTENT_SECURITY_POLICY
+        if transport_secure:
+            csp = f"{csp.rstrip('; ')}; upgrade-insecure-requests;"
+    headers["Content-Security-Policy"] = csp
+
+    if transport_secure:
+        headers["Strict-Transport-Security"] = HSTS_VALUE
+
     return headers
 
 
@@ -74,13 +116,21 @@ class SecurityHeadersMiddleware:
         async def send_with_security_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 response_headers = MutableHeaders(scope=message)
-                for name, value in (self._headers or security_headers()).items():
+                headers = self._headers or security_headers(is_https=_scope_is_https(scope))
+                for name, value in headers.items():
                     response_headers.setdefault(name, value)
             await send(message)
 
         await self.app(scope, receive, send_with_security_headers)
 
 
-def required_security_header_names() -> tuple[str, ...]:
-    """Names used by tests and the curl validation script documentation."""
-    return tuple(SECURITY_HEADERS.keys())
+def required_security_header_names(*, include_transport_security: bool = False) -> tuple[str, ...]:
+    """Header names used by tests/docs.
+
+    Local HTTP responses deliberately omit HSTS, so callers opt into that name
+    only when asserting HTTPS/production behavior.
+    """
+    names = tuple(BASE_SECURITY_HEADERS.keys()) + ("Content-Security-Policy",)
+    if include_transport_security:
+        names += ("Strict-Transport-Security",)
+    return names
