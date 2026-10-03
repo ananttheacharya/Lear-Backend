@@ -39,6 +39,7 @@ from prash.connector_registry import (
     safe_mask,
 )
 from prash.connectors.base import Connector, ConnectorEvent, ConnectorState, ResourceState, WatchHandle
+from prash.middleware.security_headers import SecurityHeadersMiddleware
 from prash.widget_generator import (
     delete_widget_layout_from_yaml,
     load_widget_layout_from_yaml,
@@ -403,6 +404,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added after CORS so Starlette's last-added-first-executed order makes this
+# wrapper cover normal responses, preflight responses, streaming responses, and
+# handled API errors uniformly.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 class APIBridgeException(HTTPException):

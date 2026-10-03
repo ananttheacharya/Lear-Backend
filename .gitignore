@@ -42,6 +42,14 @@ Thumbs.db
 # Local Prash state (audit logs, local run artifacts)
 .prash/
 
+# Secret-scan reports can include sensitive locations/excerpts; keep only
+# redacted summaries in docs.
+gitleaks-report*.json
+*.gitleaks-report.json
+
+# Keep compiled security reports out of git; source Markdown stays versioned.
+docs/security/*.pdf
+
 # Terraform
 .terraform/
 *.tfstate

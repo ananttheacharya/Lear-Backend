@@ -54,6 +54,28 @@ Check it loaded — this never prints secret values, only which keys it found:
 prash config
 ```
 
+Install the local secret-leak guard before committing code. It points Git at the
+committed `.githooks/pre-commit` hook, which runs `gitleaks` when installed and
+falls back to Lear's bundled staged-file scanner if the binary is missing:
+
+```bash
+python scripts/security/install_hooks.py
+```
+
+For a manual full-history audit, install `gitleaks` and run:
+
+```bash
+gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+```
+
+Or run the portable reviewer check, which uses Lear's redacted fallback scanner
+and can also validate a live server's S-06 headers:
+
+```bash
+python scripts/security/verify_security_hardening.py
+python scripts/security/verify_security_hardening.py --base-url http://localhost:8000
+```
+
 Run the test suite (should be **457 passed, 7 skipped** — the skips are live-cluster
 tests that only run in CI):
 

@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: lear-secret-scan
+        name: Lear secret scan (gitleaks + fallback)
+        entry: .githooks/pre-commit
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

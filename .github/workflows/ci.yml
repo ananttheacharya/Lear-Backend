@@ -63,6 +63,35 @@ jobs:
           fi
           exit "$code"
 
+  security-hardening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # S-05 explicitly audits reachable history, not just the checkout tip.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Secret audit fallback scan
+        run: |
+          python scripts/security/secrets_audit.py --working-tree
+          python scripts/security/secrets_audit.py --history
+
+      - name: Security headers unit tests
+        # TestClient covers JSON, HTML, streaming, handled error responses,
+        # route-level overrides, and local-vs-HTTPS/prod transport security
+        # without spawning a background uvicorn daemon in CI.
+        run: pytest -q tests/test_security_hardening.py
+
   # §6's Track B sub-task that was missed when the connector itself shipped:
   # "GitHub Actions cannot reach your cluster, so action tests won't run in
   # CI unless you give them somewhere to run. Use kind." tests/test_kubernetes_

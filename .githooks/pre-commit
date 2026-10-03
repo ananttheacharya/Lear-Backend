@@ -1,0 +1,16 @@
+#!/bin/sh
+# Lear S-05 secret-leak guard.
+# Prefer the real gitleaks binary when present, then run Lear's lightweight
+# fallback scanner so contributors without gitleaks are still protected.
+
+set -eu
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "[security] running gitleaks staged scan"
+  gitleaks protect --staged --redact --config .gitleaks.toml --verbose
+else
+  echo "[security] gitleaks not found; running bundled fallback scanner"
+  echo "[security] install gitleaks for the full rule set: https://github.com/gitleaks/gitleaks"
+fi
+
+python scripts/security/secrets_audit.py --staged

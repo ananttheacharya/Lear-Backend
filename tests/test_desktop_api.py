@@ -194,7 +194,7 @@ def test_ERROR_NEVER_SILENT(client, monkeypatch, tmp_path):
 def test_DYNAMIC_CONFIG_DETECTION(client, monkeypatch, tmp_path):
     """Verifies GET /api/config and POST /api/projects/auto-import dynamically inspect the registry."""
     mock_env = tmp_path / ".env"
-    mock_env.write_text("GITHUB_TOKEN=ghp_1234567890abcdef\n")
+    mock_env.write_text("GITHUB_TOKEN=github-token-for-test\n")
     monkeypatch.setattr("prash.server.ENV_PATH", str(mock_env))
     monkeypatch.setattr("prash.connector_registry.ENV_PATH", str(mock_env))
 
@@ -434,8 +434,8 @@ def test_CONNECTOR_CONNECT_VALIDATE_DISCONNECT(client, monkeypatch, tmp_path):
     monkeypatch.setattr("prash.server.get_connector", lambda cid, cfg=None: mock_conn)
 
     res_connect = client.post("/api/connectors/aws/connect", json={
-        "AWS_ACCESS_KEY_ID": "AKIAIOSFODNN7EXAMPLE",
-        "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "AWS_ACCESS_KEY_ID": "aws-access-key-example",
+        "AWS_SECRET_ACCESS_KEY": "aws-secret-key-example-value",
         "AWS_REGION": "us-west-2",
     })
     assert res_connect.status_code == 200
@@ -456,9 +456,9 @@ def test_CONNECTOR_CONNECT_VALIDATE_DISCONNECT(client, monkeypatch, tmp_path):
     assert detail_data["last_verified"] is not None
     fields = {field["key"]: field for field in detail_data["auth_fields"]}
     masked_key = fields["AWS_ACCESS_KEY_ID"]["masked_value"]
-    assert masked_key.startswith("AKI")
-    assert masked_key.endswith("PLE")
-    assert "IOSFODNN7" not in masked_key  # Must not contain inner secret
+    assert masked_key.startswith("aws")
+    assert masked_key.endswith("ple")
+    assert "access-key" not in masked_key  # Must not contain inner secret
 
     # 4. Validate credentials
     res_val = client.get("/api/connectors/aws/validate")
@@ -510,7 +510,7 @@ def test_integrations_management_and_last_verified(client, monkeypatch, tmp_path
     monkeypatch.setattr("prash.server.get_connector", lambda cid, cfg=None: mock_conn)
 
     res_connect = client.post("/api/connectors/github/connect", json={
-        "GITHUB_TOKEN": "ghp_mockSecretTokenForTesting12345",
+        "GITHUB_TOKEN": "github-mock-token-for-testing-12345",
         "GITHUB_REPO": "testorg/testrepo"
     })
     assert res_connect.status_code == 200
@@ -1012,9 +1012,9 @@ def test_CONFIG_MASKED_CREDENTIALS(client, monkeypatch, tmp_path):
     """Verifies that GET /api/config returns masked credentials and never leaks raw secrets."""
     test_env = tmp_path / ".env"
     test_env.write_text(
-        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n"
-        "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n"
-        "GITHUB_TOKEN=ghp_secretTokenLongerValue123456\n"
+        "AWS_ACCESS_KEY_ID=aws-access-key-example\n"
+        "AWS_SECRET_ACCESS_KEY=aws-secret-key-example-value\n"
+        "GITHUB_TOKEN=github-secret-token-example-123456\n"
         "SHORT_KEY=1234\n"
     )
     monkeypatch.setattr("prash.server.ENV_PATH", str(test_env))
@@ -1026,15 +1026,15 @@ def test_CONFIG_MASKED_CREDENTIALS(client, monkeypatch, tmp_path):
     raw = data["raw"]
 
     # Assert raw tokens are masked and not present verbatim
-    assert raw["AWS_ACCESS_KEY_ID"] == "AKI...PLE"
-    assert raw["AWS_SECRET_ACCESS_KEY"] == "wJa...KEY"
-    assert raw["GITHUB_TOKEN"] == "ghp...456"
+    assert raw["AWS_ACCESS_KEY_ID"] == "aws...ple"
+    assert raw["AWS_SECRET_ACCESS_KEY"] == "aws...lue"
+    assert raw["GITHUB_TOKEN"] == "git...456"
     assert raw["SHORT_KEY"] == "••••••••"
 
     # Crucial security guarantee: raw secrets must never appear in response JSON
-    assert "AKIAIOSFODNN7EXAMPLE" not in res.text
-    assert "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" not in res.text
-    assert "ghp_secretTokenLongerValue123456" not in res.text
+    assert "aws-access-key-example" not in res.text
+    assert "aws-secret-key-example-value" not in res.text
+    assert "github-secret-token-example-123456" not in res.text
 
 
 def test_SYSTEM_VERSION_DYNAMIC(client):

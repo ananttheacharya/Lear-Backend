@@ -2,7 +2,7 @@
 
 **Owner:** Parv
 **Priority:** P0
-**Status:** ⬜ Not Started
+**Status:** ✅ Done — 2026-10-01
 **Estimated effort:** 0.5 day
 **Depends on:** Nothing (can start immediately — should be one of the first tasks)
 **Blocks:** Nothing (but should finish before any other PR merges)
