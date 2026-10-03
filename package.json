@@ -6,7 +6,7 @@
     "start": "concurrently -k -n BACKEND,FRONTEND -c magenta,cyan \"npm run dev:server\" \"npm run dev:desktop\"",
     "dev": "npm start",
     "dev:desktop": "npm --prefix desktop run dev",
-    "dev:server": "python -m uvicorn prash.server:app --host 127.0.0.1 --port 8000 --log-level info",
+    "dev:server": "python -m uvicorn prash.server:app --host 0.0.0.0 --port 8000 --reload --log-level info",
     "build": "npm --prefix desktop run build",
     "test": "npm --prefix desktop run test"
   },

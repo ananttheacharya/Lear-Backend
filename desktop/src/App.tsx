@@ -11,6 +11,7 @@ import NotificationToast from './components/NotificationToast';
 import Chatbot from './components/Chatbot';
 import ChatWorkspace from './components/ChatWorkspace';
 import ErrorBoundary from './components/ErrorBoundary';
+import DemoCenter from './components/DemoCenter';
 import ComponentPreview from './components/ui/Preview';
 import { LearProvider, useLear } from './context/LearContext';
 
@@ -92,6 +93,7 @@ function AppContent() {
                   onOpenWizard={() => setIsSetupComplete(false)}
                 />
               )}
+              {activeTab === 'demo' && <DemoCenter />}
               {activeTab === 'chat' && <ChatWorkspace />}
               {activeTab === 'projects' && <Projects />}
               {activeTab === 'integrations' && <Integrations />}

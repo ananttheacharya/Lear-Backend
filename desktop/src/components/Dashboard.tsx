@@ -26,7 +26,7 @@ import ServiceWidget from './ServiceWidget';
 import ErrorBoundary from './ErrorBoundary';
 import useWatcher from '../hooks/useWatcher';
 import { useLear } from '../context/LearContext';
-import { KPIStrip } from './dashboard';
+import { KPIStrip } from './dashboard/KPIStrip';
 
 interface DashboardProps {
   activeProject?: any;

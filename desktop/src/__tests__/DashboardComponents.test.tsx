@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { KPIStrip } from '../components/dashboard';
+import { KPIStrip } from '../components/dashboard/index';
 
 describe('dashboard presentation components', () => {
   it('renders live KPI values from props without fetching', () => {

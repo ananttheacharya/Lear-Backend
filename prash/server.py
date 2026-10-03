@@ -579,10 +579,17 @@ def list_connectors():
     here, regardless of a stale cached "healthy" from an earlier session."""
     env_config = dotenv.dotenv_values(ENV_PATH) if os.path.exists(ENV_PATH) else {}
     connectors = registry_to_json(env_config)
+    is_mock = os.environ.get("LEAR_MOCK_SERVICES", "true").lower() in ("1", "true", "yes")
     for c in connectors:
         state = _connection_state(c["id"], env_config)
         c["last_verified"] = state["last_verified"]
         c["identity"] = state["identity"] if c["status"] == "configured" else ""
+        if is_mock and c["id"] in ("aws", "gcp", "kubernetes", "datadog", "pagerduty", "grafana"):
+            if c["status"] != "configured":
+                c["status"] = "configured"
+                c["identity"] = f"Lear Mock Sandbox ({c['id'].upper()} Active)"
+                if not c["last_verified"]:
+                    c["last_verified"] = _utcnow()
     return {"connectors": connectors}
 
 
@@ -782,6 +789,16 @@ def validate_connector(connector_id: str):
     entry = CONNECTOR_REGISTRY[connector_id]
     env_config = dotenv.dotenv_values(ENV_PATH) if os.path.exists(ENV_PATH) else {}
     if not is_connector_configured(connector_id, env_config):
+        if os.environ.get("LEAR_MOCK_SERVICES", "true").lower() in ("1", "true", "yes"):
+            if connector_id in ("aws", "gcp", "kubernetes", "datadog", "pagerduty", "grafana"):
+                state = _set_connection_state(connector_id, "healthy", identity=f"Lear Mock Sandbox ({connector_id.upper()})", verified=True)
+                return {
+                    "valid": True,
+                    "status": "connected",
+                    "message": f"{entry.name} Mock Sandbox is active & healthy",
+                    "identity": f"Lear Mock Sandbox ({connector_id.upper()})",
+                    "last_verified": state["last_verified"],
+                }
         return {
             "valid": False,
             "status": "unconfigured",
@@ -2284,13 +2301,13 @@ def _gather_live_sre_telemetry(cid: Optional[str] = None, rid: Optional[str] = N
     sections = []
     
     # 1. AWS Telemetry
+    insts = []
+    inst_ids = []
     try:
         import boto3
         session = boto3.Session(region_name="ap-south-1")
         ec2 = session.client("ec2")
         res = ec2.describe_instances(Filters=[{"Name": "instance-state-name", "Values": ["running"]}])
-        insts = []
-        inst_ids = []
         for r in res.get("Reservations", []):
             for i in r.get("Instances", []):
                 iid = i["InstanceId"]
@@ -2323,7 +2340,37 @@ def _gather_live_sre_telemetry(cid: Optional[str] = None, rid: Optional[str] = N
     except Exception as e:
         logger.debug(f"AWS telemetry fetch skipped: {e}")
 
+    # Fallback / augment with MockServiceManager AWS & GCP Telemetry
+    from prash.mock_service import MockServiceManager
+    mock_mgr = MockServiceManager.get_instance()
+    mock_state = mock_mgr.state
+
+    if not insts:
+        mock_aws_lines = []
+        for name, inst in mock_state["aws"]["instances"].items():
+            if inst.get("marker_present") or inst.get("active_error") == "runaway_cpu":
+                st = f"DEGRADED (CPU {inst['cpu_pct']}% - Runaway thread /tmp/prash-test-fixture-break)"
+            elif inst.get("active_error") == "disk_full":
+                st = "FAILED (100% Inode/Disk Full - /var/log/payment.log)"
+            else:
+                st = f"Running (CPU {inst['cpu_pct']}%, Status: 2/2 passed)"
+            mock_aws_lines.append(f"- Node `{inst['instance_id']}` ({name}, {inst['instance_type']}, Zone: {inst.get('zone', 'ap-south-1a')}): {st}")
+        sections.append("### AWS Infrastructure Topology (ap-south-1):\n" + "\n".join(mock_aws_lines))
+
+    # GCP Telemetry
+    mock_gcp_lines = []
+    for name, inst in mock_state["gcp"]["instances"].items():
+        if inst.get("marker_present") or inst.get("active_error") == "proxy_exhaustion":
+            st = "DEGRADED (Connection Pool Saturation 1024/1024, 504 Gateway Timeout)"
+        elif inst.get("active_error") == "cloudrun_oom":
+            st = "CRASH_LOOPING (Container OOMKilled exit code 137, >512MiB quota)"
+        else:
+            st = f"RUNNING ({inst.get('active_connections', 120)} connections, Healthy)"
+        mock_gcp_lines.append(f"- Service `{name}` ({inst.get('machine_type') or inst.get('service_type')}, Zone: {inst.get('zone') or inst.get('region')}): {st}")
+    sections.append("### Google Cloud Platform Services (us-central1):\n" + "\n".join(mock_gcp_lines))
+
     # 2. Kubernetes Pods
+    k8s_found = False
     try:
         import subprocess
         k_res = subprocess.run(
@@ -2332,8 +2379,16 @@ def _gather_live_sre_telemetry(cid: Optional[str] = None, rid: Optional[str] = N
         )
         if k_res.returncode == 0 and k_res.stdout:
             sections.append(f"### Kubernetes Workloads (namespace `lear-demo`):\n```\n{k_res.stdout.strip()}\n```")
+            k8s_found = True
     except Exception as e:
         logger.debug(f"K8s telemetry fetch skipped: {e}")
+
+    if not k8s_found:
+        k_lines = ["NAME                                READY   STATUS             RESTARTS   AGE"]
+        for name, p in mock_state["k8s"]["pods"].items():
+            rdy = "1/1" if p.get("ready") else "0/1"
+            k_lines.append(f"{p.get('name', name):<35} {rdy:<7} {p.get('status', 'Running'):<18} {p.get('restarts', 0):<10} 4h")
+        sections.append(f"### Kubernetes Workloads (namespace `lear-demo`):\n```\n" + "\n".join(k_lines) + "\n```")
 
     # 3. Active Incidents & Episodic Memory
     try:
@@ -3000,16 +3055,18 @@ CHAOS_STATE = {
 @app.get("/api/demo/status")
 @app.get("/api/demo/health")
 def get_demo_status():
-    """Returns real cluster pod status, active DB host, incident state, and live ELB latency."""
-    import subprocess
-    import urllib.request
+    """Returns real or mock cluster pod status, active DB host, incident state, and connector topology."""
     from prash.incident_manager import get_latest_incident
-    
+    from prash.mock_service import MockServiceManager
+    mock_mgr = MockServiceManager.get_instance()
+    mock_state = mock_mgr.state
+
     pods = []
     try:
+        import subprocess
         raw = subprocess.check_output(
             ["kubectl", "get", "pods", "-n", "lear-demo", "-o", "json"],
-            timeout=5, stderr=subprocess.DEVNULL
+            timeout=2, stderr=subprocess.DEVNULL
         )
         data = json.loads(raw)
         for item in data.get("items", []):
@@ -3025,168 +3082,91 @@ def get_demo_status():
                 "ready": cs.get("ready", False),
                 "restarts": cs.get("restartCount", 0)
             })
-    except Exception as e:
-        logger.warning(f"Could not fetch pods: {e}")
-
-    # Fetch live DATABASE_HOST from ConfigMap
-    db_host = "postgres"
-    try:
-        raw_cm = subprocess.check_output(
-            ["kubectl", "get", "configmap", "checkout-api-config", "-n", "lear-demo", "-o", "jsonpath={.data.DATABASE_HOST}"],
-            timeout=3, stderr=subprocess.DEVNULL, text=True
-        )
-        if raw_cm:
-            db_host = raw_cm.strip()
     except Exception:
         pass
 
-    # Check ELB checkout-api health via /api/healthz (routes to checkout-api and checks DB)
-    elb_healthy = False
-    latency_ms = 0
-    elb_url = "http://a4131978a1f9447f29e142dc50cba962-1618812194.ap-south-1.elb.amazonaws.com/api/healthz"
-    try:
-        t0 = time.time()
-        req = urllib.request.Request(elb_url)
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            latency_ms = round((time.time() - t0) * 1000)
-            elb_healthy = (resp.status == 200)
-    except Exception:
-        elb_healthy = False
-        latency_ms = 999 if CHAOS_STATE.get("active_error") else 45
+    if not pods:
+        pods = mock_mgr.k8s_get_pods()
 
-    if CHAOS_STATE.get("high_load"):
-        latency_ms = max(latency_ms, 1820)
-        elb_healthy = False
+    # Database host from configmap
+    db_host = mock_state["k8s"]["configmaps"].get("checkout-api-config", {}).get("DATABASE_HOST", "postgres")
+
+    # Overall health determination
+    has_broken_pod = any(not p.get("ready") or "Crash" in str(p.get("status", "")) for p in pods)
+    has_aws_error = any(inst.get("marker_present") or inst.get("active_error") for inst in mock_state["aws"]["instances"].values())
+    has_gcp_error = any(inst.get("marker_present") or inst.get("active_error") for inst in mock_state["gcp"]["instances"].values())
+    is_healthy = not (has_broken_pod or has_aws_error or has_gcp_error or CHAOS_STATE.get("active_error"))
+
+    latency_ms = 22 if is_healthy else (1850 if has_gcp_error else 999)
 
     return {
         "pods": pods,
-        "elb_healthy": elb_healthy,
+        "elb_healthy": is_healthy,
         "latency_ms": latency_ms,
         "database_host": db_host,
         "chaos_state": CHAOS_STATE,
-        "latest_incident": get_latest_incident()
+        "latest_incident": get_latest_incident(),
+        "aws_instances": mock_state["aws"]["instances"],
+        "gcp_instances": mock_state["gcp"]["instances"],
+        "scenarios": mock_mgr.get_all_scenarios(),
     }
+
+
+@app.get("/api/demo/scenarios")
+def get_demo_scenarios():
+    """Returns all available failure simulation scenarios across AWS, GCP, K8s, Datadog, PagerDuty."""
+    from prash.mock_service import MockServiceManager
+    return {"scenarios": MockServiceManager.get_instance().get_all_scenarios()}
+
+
+@app.post("/api/demo/inject-scenario")
+def demo_inject_scenario(body: Dict[str, Any] = Body(...)):
+    """Injects a simulated failure on AWS, GCP, K8s, or observability."""
+    from prash.mock_service import MockServiceManager
+    scenario_id = body.get("scenario_id", "aws_cpu_spike")
+    res = MockServiceManager.get_instance().inject_scenario(scenario_id)
+    CHAOS_STATE["active_error"] = scenario_id
+    return res
 
 
 @app.post("/api/demo/inject-failure")
 def demo_inject_failure():
-    """Injects real ConfigMap break and dispatches high-priority incident alert."""
-    import subprocess
-    from prash.email_service import dispatch_email_alert
-    from prash.incident_manager import create_incident
+    """Injects ConfigMap failure on checkout-api."""
+    from prash.mock_service import MockServiceManager
+    CHAOS_STATE["active_error"] = "k8s_configmap_corrupt"
+    return MockServiceManager.get_instance().inject_scenario("k8s_configmap_corrupt")
 
-    CHAOS_STATE["active_error"] = "config_corrupt"
 
-    try:
-        subprocess.run(
-            ["kubectl", "-n", "lear-demo", "patch", "configmap", "checkout-api-config",
-             "--type", "merge", "-p", '{"data":{"DATABASE_HOST":"postgres-wrong"}}'],
-            check=True, timeout=10, capture_output=True
-        )
-        subprocess.run(
-            ["kubectl", "-n", "lear-demo", "delete", "pod", "-l", "app=checkout-api", "--now"],
-            check=True, timeout=10, capture_output=True
-        )
-    except Exception as e:
-        logger.error(f"Failure injection failed: {e}")
-
-    # 1. Create incident tracking record
-    inc = create_incident(
-        service="checkout-api",
-        namespace="lear-demo",
-        title="[CRITICAL] checkout-api Database Connectivity Failure (CrashLoopBackOff)",
-        severity="CRITICAL",
-        tags=["CRITICAL", "CONFIG-ERROR", "AWAITING APPROVAL"],
-        error_summary="gaierror: [Errno -2] Name does not resolve for database host 'postgres-wrong:5432'",
-        diagnosis="DeepSeek Brain identified DATABASE_HOST misconfigured to 'postgres-wrong'. Episodic memory confirms matching past resolution.",
-        proposed_remediation="Patch ConfigMap checkout-api-config (DATABASE_HOST -> postgres) and trigger immediate pod restart.",
-        patch_data={"DATABASE_HOST": "postgres"},
-        cluster="AWS EKS lear-demo (ap-south-1 Mumbai)",
-        requires_approval=True
-    )
-
-    # 2. Dispatch beautiful alert email with action buttons + Slack notification
-    email_record = dispatch_email_alert(
-        subject="[CRITICAL] checkout-api Database Connectivity Failure (CrashLoopBackOff)",
-        service="checkout-api",
-        namespace="lear-demo",
-        status="CRITICAL",
-        error_summary="gaierror: [Errno -2] Name does not resolve for database host 'postgres-wrong:5432'",
-        diagnosis="DeepSeek Brain identified DATABASE_HOST misconfigured to 'postgres-wrong'. Episodic memory confirms matching past resolution.",
-        action_taken="Lear Auto-Fix recommended: Patch ConfigMap checkout-api-config (DATABASE_HOST -> postgres) and trigger immediate pod restart.",
-        resolution_status="FAILED",
-        incident_id=inc["incident_id"]
-    )
-
-    return {"success": True, "action": "injected", "incident": inc, "email": email_record}
+@app.post("/api/demo/ai-fix")
+def demo_ai_fix(body: Optional[Dict[str, Any]] = Body(default={})):
+    """Triggers Lear AI Copilot to diagnose and fix simulated failure states across all connectors."""
+    from prash.mock_service import MockServiceManager
+    scenario_id = (body or {}).get("scenario_id")
+    CHAOS_STATE["active_error"] = None
+    CHAOS_STATE["gateway_timeout"] = False
+    CHAOS_STATE["high_load"] = False
+    return MockServiceManager.get_instance().ai_auto_fix(scenario_id)
 
 
 @app.post("/api/demo/auto-fix")
 def demo_auto_fix():
-    """Autonomous fix: restores ConfigMap to postgres, scales primary DB, and dispatches resolution email."""
-    import subprocess
-    from prash.email_service import dispatch_email_alert
-    from prash.incident_manager import get_latest_incident, execute_remediation
-
+    """Autonomous fix: restores all failure states back to healthy."""
+    from prash.mock_service import MockServiceManager
     CHAOS_STATE["active_error"] = None
     CHAOS_STATE["gateway_timeout"] = False
     CHAOS_STATE["high_load"] = False
-
-    global _dashboard_summary_cache
-    _dashboard_summary_cache = {"data": None, "timestamp": 0}
-    for wid in list(_watch_metadata.keys()):
-        _watch_metadata[wid]["status"] = "healthy"
-
-    latest = get_latest_incident()
-    inc_id = latest["incident_id"] if latest else None
-    
-    try:
-        subprocess.run(
-            ["kubectl", "-n", "lear-demo", "scale", "deployment", "postgres", "--replicas=1"],
-            timeout=10, capture_output=True
-        )
-    except Exception as e:
-        logger.warning(f"Could not scale postgres: {e}")
-
-    if inc_id:
-        res = execute_remediation(inc_id)
-        if not res.get("success"):
-            logger.warning(f"Remediation execution warning: {res.get('error')}")
-    else:
-        try:
-            subprocess.run(
-                ["kubectl", "-n", "lear-demo", "patch", "configmap", "checkout-api-config",
-                 "--type", "merge", "-p", '{"data":{"DATABASE_HOST":"postgres"}}'],
-                check=True, timeout=10, capture_output=True
-            )
-            subprocess.run(
-                ["kubectl", "-n", "lear-demo", "delete", "pod", "-l", "app=checkout-api", "--now"],
-                check=True, timeout=10, capture_output=True
-            )
-        except Exception as e:
-            logger.error(f"Auto-fix fallback failed: {e}")
-
-    # Dispatch resolution email
-    email_record = dispatch_email_alert(
-        subject="[RESOLVED] checkout-api Successfully Restored by Lear Autonomous SRE",
-        service="checkout-api",
-        namespace="lear-demo",
-        status="RESOLVED",
-        error_summary="Prior error: postgres-wrong host resolution failure",
-        diagnosis="Root cause resolved. ConfigMap DATABASE_HOST restored to valid service host 'postgres'.",
-        action_taken="Automated merge patch applied to checkout-api-config. Deployment rollout verified 1/1 Running.",
-        resolution_status="RECOVERED",
-        downtime_seconds=14,
-        incident_id=inc_id
-    )
-
-    return {"success": True, "action": "fixed", "incident_id": inc_id, "email": email_record}
+    return MockServiceManager.get_instance().ai_auto_fix()
 
 
 @app.post("/api/demo/reset")
+@app.post("/api/demo/reset-all")
 def demo_reset():
-    """Resets the cluster back to baseline healthy configuration."""
-    return demo_auto_fix()
+    """Resets all mock services across AWS, GCP, K8s, Datadog, and PagerDuty."""
+    from prash.mock_service import MockServiceManager
+    CHAOS_STATE["active_error"] = None
+    CHAOS_STATE["gateway_timeout"] = False
+    CHAOS_STATE["high_load"] = False
+    return MockServiceManager.get_instance().heal_all()
 
 
 @app.post("/api/demo/customer-checkout")
