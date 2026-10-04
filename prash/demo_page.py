@@ -654,9 +654,11 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       <span class="cluster-tag">☁️ <strong>AWS EC2 & ECS</strong> (Mock Active)</span>
       <span class="cluster-tag">⚡ <strong>GCP Compute & Cloud Run</strong> (Mock Active)</span>
       <span class="cluster-tag">☸️ <strong>Kubernetes</strong> (lear-demo)</span>
+      <span class="cluster-tag">🐙 <strong>GitHub CI/CD</strong> (drufiy/checkout-backend)</span>
       <span class="cluster-tag">📊 <strong>Datadog & PagerDuty</strong></span>
     </div>
     <div class="header-actions">
+      <a href="/store" target="_blank" class="btn-secondary" style="text-decoration: none; color: #FFF; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border: none;">🛍️ Live Customer Storefront</a>
       <button class="btn-secondary" onclick="openEmailModal()">✉️ Incident Alert Email</button>
       <button class="btn-secondary" onclick="resetAllServices()">🔄 Reset Baseline</button>
     </div>
@@ -668,6 +670,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     <button class="tab-btn" onclick="filterConnectorTab('aws')">☁️ AWS (EC2/SSM)</button>
     <button class="tab-btn" onclick="filterConnectorTab('gcp')">⚡ Google Cloud (GCE/Cloud Run)</button>
     <button class="tab-btn" onclick="filterConnectorTab('k8s')">☸️ Kubernetes (Pods/ConfigMaps)</button>
+    <button class="tab-btn" onclick="filterConnectorTab('github')">🐙 GitHub (Actions/CI)</button>
     <button class="tab-btn" onclick="filterConnectorTab('obs')">📊 Observability (Datadog/PagerDuty)</button>
   </div>
 
@@ -807,6 +810,19 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
                 <span>Health: 200 OK</span>
               </div>
               <div class="service-meta">K8s StatefulSet • Orders DB</div>
+            </div>
+
+            <!-- GitHub Card -->
+            <div class="service-card" id="cardGithub" data-connector="github">
+              <div class="service-card-header">
+                <span class="service-card-title">🐙 drufiy/checkout-backend</span>
+                <span class="service-badge" id="badgeGithub">Passing</span>
+              </div>
+              <div class="service-detail">
+                <span>Branch: <strong id="valGithubBranch">main</strong></span>
+                <span>Commit: <strong id="valGithubCommit">c84f1a2</strong></span>
+              </div>
+              <div class="service-meta">GitHub Actions CI • Workflow #143</div>
             </div>
           </div>
         </div>
@@ -953,6 +969,17 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
               <div class="scenario-title">ConfigMap DB Host Mismatch</div>
               <div class="scenario-desc">checkout-api-config set to 'postgres-wrong'. Pods enter CrashLoopBackOff.</div>
               <div class="scenario-plan">AI Plan: kubectl patch configmap & rollout restart</div>
+            </div>
+
+            <!-- GitHub Scenario -->
+            <div class="scenario-card">
+              <div class="scenario-header">
+                <span class="scenario-tag" style="background: rgba(139, 92, 246, 0.2); color: #C084FC;">GitHub CI</span>
+                <button class="btn-inject" onclick="injectScenario('github_ci_failure')">💥 Break CI Workflow</button>
+              </div>
+              <div class="scenario-title">CI Pipeline Broken Build</div>
+              <div class="scenario-desc">Checkout backend unit tests fail on commit c84f1a2, blocking hotfix release deployment.</div>
+              <div class="scenario-plan">AI Plan: Analyze pytest trace & auto-create hotfix PR</div>
             </div>
 
             <!-- Cascade Scenario -->
@@ -1133,6 +1160,14 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
       document.getElementById('badgeDatadog').innerText = 'OK';
       document.getElementById('valDdRate').innerText = '0.4%';
       document.getElementById('badgePagerDuty').innerText = 'Resolved';
+      const ghCard = document.getElementById('cardGithub');
+      if (ghCard) ghCard.classList.remove('error');
+      const ghBadge = document.getElementById('badgeGithub');
+      if (ghBadge) {
+        ghBadge.innerText = 'Passing';
+        ghBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+        ghBadge.style.color = '#34D399';
+      }
     }
 
     async function injectScenario(scenarioId) {
@@ -1177,6 +1212,17 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
           document.getElementById('badgeK8sCheckout').innerText = 'CrashLoop';
           document.getElementById('valK8sHost').innerText = 'postgres-wrong';
           triggerOutageUI('Kubernetes checkout-api CrashLoop: cannot reach postgres database');
+        } else if (scenarioId === 'github_ci_failure') {
+          logTerminal('tag-err-term', 'GITHUB', 'CI Workflow build failure: test_payment_gateway FAILED (Exit code 1)');
+          const ghCard = document.getElementById('cardGithub');
+          if (ghCard) ghCard.classList.add('error');
+          const ghBadge = document.getElementById('badgeGithub');
+          if (ghBadge) {
+            ghBadge.innerText = 'FAILED';
+            ghBadge.style.background = 'rgba(244, 63, 94, 0.2)';
+            ghBadge.style.color = '#FB7185';
+          }
+          triggerOutageUI('GitHub CI pipeline failing: drufiy/checkout-backend build blocked');
         } else if (scenarioId === 'multi_cloud_cascade') {
           logTerminal('tag-err-term', 'CASCADE', 'Cascading multi-cloud failure across AWS, GCP, and Kubernetes!');
           document.getElementById('cardAwsFixture').classList.add('error');
@@ -1185,12 +1231,20 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
           document.getElementById('badgeGcpProxy').innerText = 'EXHAUSTED';
           document.getElementById('cardK8sCheckout').classList.add('error');
           document.getElementById('badgeK8sCheckout').innerText = 'CrashLoop';
+          const ghCard = document.getElementById('cardGithub');
+          if (ghCard) ghCard.classList.add('error');
+          const ghBadge = document.getElementById('badgeGithub');
+          if (ghBadge) {
+            ghBadge.innerText = 'FAILED';
+            ghBadge.style.background = 'rgba(244, 63, 94, 0.2)';
+            ghBadge.style.color = '#FB7185';
+          }
           document.getElementById('cardDatadog').classList.add('error');
           document.getElementById('badgeDatadog').innerText = 'ALARM';
           document.getElementById('valDdRate').innerText = '14.8%';
           document.getElementById('cardPagerDuty').classList.add('error');
           document.getElementById('badgePagerDuty').innerText = 'TRIGGERED';
-          triggerOutageUI('Multi-cloud cascading failure across AWS, GCP, and Kubernetes!');
+          triggerOutageUI('Multi-cloud cascading failure across AWS, GCP, GitHub, and Kubernetes!');
         }
 
         logTerminal('tag-dd-term', 'DATADOG', 'Datadog monitor #316853860 triggered: Synthetic error rate > 5.0%');
@@ -1202,7 +1256,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
     }
 
     async function triggerAutoFix() {
-      logTerminal('tag-brain', 'DEEPSEEK', 'Lear AI Copilot evaluating telemetry & root cause across all connectors...');
+      logTerminal('tag-brain', 'AI-SRE', 'Lear AI Copilot evaluating telemetry & root cause via LLM inference...');
       logTerminal('tag-brain', 'EPISODIC', 'Correlating telemetry with multi-cloud runbook catalog...');
 
       try {
@@ -1213,16 +1267,25 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
         });
         const d = await res.json();
 
-        if (d.actions && d.actions.length > 0) {
-          d.actions.forEach(act => {
-            if (act.includes('AWS')) {
-              logTerminal('tag-aws-term', 'AWS-SSM', act);
-            } else if (act.includes('GCP')) {
-              logTerminal('tag-gcp-term', 'GCP-CMD', act);
-            } else if (act.includes('Kubernetes')) {
-              logTerminal('tag-k8s-term', 'K8S-PATCH', act);
+        if (d.inference_model) {
+          logTerminal('tag-brain', d.inference_model.toUpperCase(), `AI Diagnosis: ${d.inference_diagnosis || d.message}`);
+        }
+
+        const actions = d.actions_taken || d.actions || [];
+        if (actions.length > 0) {
+          actions.forEach(act => {
+            const text = typeof act === 'string' ? act : `${act.command} (${act.result})`;
+            const conn = (typeof act === 'object' && act.connector) ? act.connector.toUpperCase() : 'AI-FIX';
+            if (conn.includes('AWS')) {
+              logTerminal('tag-aws-term', 'AWS-SSM', text);
+            } else if (conn.includes('GCP')) {
+              logTerminal('tag-gcp-term', 'GCP-CMD', text);
+            } else if (conn.includes('K8S')) {
+              logTerminal('tag-k8s-term', 'K8S-PATCH', text);
+            } else if (conn.includes('GITHUB')) {
+              logTerminal('tag-dd-term', 'GITHUB-PR', text);
             } else {
-              logTerminal('tag-fix-term', 'AI-ACTION', act);
+              logTerminal('tag-fix-term', conn, text);
             }
           });
         }
@@ -1328,6 +1391,26 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
             document.getElementById('cardGcpProxy').classList.add('error');
             document.getElementById('badgeGcpProxy').innerText = 'EXHAUSTED';
             document.getElementById('valGcpConns').innerText = '1024/1024';
+          }
+        }
+        if (d.github_repos && d.github_repos['drufiy/checkout-backend']) {
+          const r = d.github_repos['drufiy/checkout-backend'];
+          const ghCard = document.getElementById('cardGithub');
+          const ghBadge = document.getElementById('badgeGithub');
+          if (r.ci_status === 'failure' || r.active_error) {
+            if (ghCard) ghCard.classList.add('error');
+            if (ghBadge) {
+              ghBadge.innerText = 'FAILED';
+              ghBadge.style.background = 'rgba(244, 63, 94, 0.2)';
+              ghBadge.style.color = '#FB7185';
+            }
+          } else {
+            if (ghCard && !isBroken) ghCard.classList.remove('error');
+            if (ghBadge && !isBroken) {
+              ghBadge.innerText = 'Passing';
+              ghBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+              ghBadge.style.color = '#34D399';
+            }
           }
         }
       } catch (e) {}

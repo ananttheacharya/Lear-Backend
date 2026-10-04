@@ -86,6 +86,10 @@ interface LearContextType {
   startWatch: (connectorId: string, target: string) => Promise<boolean>;
   stopWatch: (connectorId: string, target?: string, watchId?: string) => Promise<boolean>;
 
+  // SRE Operation Mode
+  sreMode: 'autonomous' | 'supervised';
+  setSreMode: (mode: 'autonomous' | 'supervised') => Promise<void>;
+
   // Notifications
   unreadCount: number;
   toasts: AppNotification[];
@@ -132,6 +136,21 @@ export const LearProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setChatContext(null);
   }, []);
 
+  const [sreMode, setSreModeState] = useState<'autonomous' | 'supervised'>('autonomous');
+
+  const setSreMode = useCallback(async (mode: 'autonomous' | 'supervised') => {
+    setSreModeState(mode);
+    try {
+      await fetch('/api/sre/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+    } catch (e) {
+      console.error('Error setting SRE mode:', e);
+    }
+  }, []);
+
   const [connectedCount, setConnectedCount] = useState<number>(0);
   const [activeWatches, setActiveWatches] = useState<ActiveWatch[]>([]);
   const [watcherState, setWatcherState] = useState<WatcherState>('IDLE');
@@ -142,6 +161,14 @@ export const LearProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 1. Fetch system version & configured connectors count
   const fetchMetadata = useCallback(async () => {
+    try {
+      const resMode = await fetch('/api/sre/mode');
+      if (resMode.ok) {
+        const mData = await resMode.json();
+        if (mData.mode) setSreModeState(mData.mode);
+      }
+    } catch {}
+
     try {
       const resVer = await fetch('/api/system/version');
       if (resVer.ok) {
@@ -446,6 +473,8 @@ export const LearProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toasts,
       dismissToast,
       pushToast,
+      sreMode,
+      setSreMode,
     }),
     [
       projects,
@@ -477,6 +506,8 @@ export const LearProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toasts,
       dismissToast,
       pushToast,
+      sreMode,
+      setSreMode,
     ]
   );
 

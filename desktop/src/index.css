@@ -145,11 +145,27 @@
 .lear-dashboard { animation: lear-dashboard-enter var(--duration-slow) var(--ease-out) both; }
 .lear-dashboard > * { position: relative; }
 .lear-dashboard .glass-panel { box-shadow: var(--shadow-card); }
-.lear-dashboard .glass-panel::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.035) 45%, transparent 70%); transform: translateX(-110%); transition: transform 700ms var(--ease-out); }
-.lear-dashboard .glass-panel:hover::after { transform: translateX(110%); }
-.lear-dashboard .glass-panel:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg), 0 0 22px var(--color-brand-primary-muted); }
+.lear-dashboard .glass-panel:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.12); }
+
+/* Hover reflection animation strictly scoped to buttons, never entire page panels */
+.btn-reflection, .ui-button {
+  position: relative;
+  overflow: hidden;
+}
+.btn-reflection::after, .ui-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.12) 50%, transparent 80%);
+  transform: translateX(-120%);
+  transition: transform 600ms var(--ease-out);
+}
+.btn-reflection:hover::after, .ui-button:hover::after {
+  transform: translateX(120%);
+}
 @keyframes lear-dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .lear-dashboard { animation: none; } .lear-dashboard .glass-panel, .lear-dashboard .glass-panel::after { transition: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .lear-dashboard { animation: none; } .lear-dashboard .glass-panel { transition: none; transform: none; } .btn-reflection::after, .ui-button::after { display: none; } }
 
 
 /* Chat console: a focused command surface, not decorative noise. */

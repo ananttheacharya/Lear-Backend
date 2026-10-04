@@ -532,16 +532,20 @@ async def _poll_watches_loop():
             if events_to_broadcast:
                 for item in events_to_broadcast:
                     etype = (item.get("event_type") or "").lower()
+                    # Only create notification items for genuine warnings/errors, not normal metric pings
+                    if "metric" in etype or "normal" in etype:
+                        continue
                     sev = "error" if "fail" in etype or "error" in etype or "crash" in etype else ("warning" if "spike" in etype or "alarm" in etype or "warn" in etype or "degraded" in etype else "info")
-                    _notifications.insert(0, {
-                        "id": f"notif_{int(datetime.datetime.now(datetime.timezone.utc).timestamp()*1000)}_{item.get('connector')}",
-                        "title": item.get("summary") or f"{item.get('connector')} update",
-                        "message": f"{item.get('event_type')} on {item.get('watch_id')}",
-                        "connector": item.get("connector"),
-                        "severity": sev,
-                        "timestamp": item.get("timestamp"),
-                        "read": False,
-                    })
+                    if sev in ("error", "warning"):
+                        _notifications.insert(0, {
+                            "id": f"notif_{int(datetime.datetime.now(datetime.timezone.utc).timestamp()*1000)}_{item.get('connector')}",
+                            "title": item.get("summary") or f"{item.get('connector')} update",
+                            "message": f"{item.get('event_type')} on {item.get('watch_id')}",
+                            "connector": item.get("connector"),
+                            "severity": sev,
+                            "timestamp": item.get("timestamp"),
+                            "read": False,
+                        })
                 if len(_notifications) > 100:
                     del _notifications[100:]
                 _save_notifications_to_disk()
@@ -3090,7 +3094,8 @@ def get_demo_status():
     has_broken_pod = any(not p.get("ready") or "Crash" in str(p.get("status", "")) for p in pods)
     has_aws_error = any(inst.get("marker_present") or inst.get("active_error") for inst in mock_state["aws"]["instances"].values())
     has_gcp_error = any(inst.get("marker_present") or inst.get("active_error") for inst in mock_state["gcp"]["instances"].values())
-    is_healthy = not (has_broken_pod or has_aws_error or has_gcp_error or CHAOS_STATE.get("active_error"))
+    has_github_error = any(repo.get("active_error") or repo.get("ci_status") == "failure" for repo in mock_state.get("github", {}).get("repos", {}).values())
+    is_healthy = not (has_broken_pod or has_aws_error or has_gcp_error or has_github_error or CHAOS_STATE.get("active_error"))
 
     latency_ms = 22 if is_healthy else (1850 if has_gcp_error else 999)
 
@@ -3103,6 +3108,7 @@ def get_demo_status():
         "latest_incident": get_latest_incident(),
         "aws_instances": mock_state["aws"]["instances"],
         "gcp_instances": mock_state["gcp"]["instances"],
+        "github_repos": mock_state.get("github", {}).get("repos", {}),
         "scenarios": mock_mgr.get_all_scenarios(),
     }
 
@@ -3164,68 +3170,222 @@ def demo_reset():
     return MockServiceManager.get_instance().heal_all()
 
 
+STORE_ORDER_FEED: List[Dict[str, Any]] = []
+SIMULATED_TRAFFIC_ACTIVE = True
+
+
 @app.post("/api/demo/customer-checkout")
 def demo_customer_checkout(body: Dict[str, Any] = Body(...)):
-    """Simulates real customer checkout through public AWS ELB."""
-    import urllib.request
-    import urllib.error
+    """Simulates real customer checkout through local mock microservices topology."""
+    from prash.mock_service import MockServiceManager
+    import random
+    import uuid
+
+    mock_mgr = MockServiceManager.get_instance()
+    mock_state = mock_mgr.state
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    item_name = body.get("item", "Lear Tensor Node S4")
+    try:
+        price = float(body.get("price", 49.99))
+    except (ValueError, TypeError):
+        price = 49.99
+
+    customer = body.get("customer") or {
+        "name": "Sarah Chen",
+        "email": "sarah.chen@stripe.com",
+        "city": "San Francisco, CA"
+    }
 
     # 1. Handle injected gateway timeout
     if CHAOS_STATE.get("gateway_timeout"):
-        time.sleep(3.5)
-        return JSONResponse(
-            status_code=504,
-            content={
-                "status": "FAILED",
-                "error": "HTTP 504 Gateway Timeout: Upstream payment gateway timed out after 5000ms. Circuit breaker tripped.",
-                "service": "payment-gateway",
-                "cluster": "AWS EKS lear-demo",
-                "code": 504
-            }
-        )
+        time.sleep(1.0)
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 504,
+            "error": "HTTP 504 Gateway Timeout: Upstream payment gateway timed out after 5000ms. Circuit breaker tripped.",
+            "service": "payment-gateway",
+            "cluster": "AWS EKS lear-demo",
+            "failing_hop": "AWS Circuit Breaker",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=504, content=err_record)
 
-    # 2. Handle injected high load latency
-    if CHAOS_STATE.get("high_load"):
-        time.sleep(1.2)
+    # 2. Check Kubernetes checkout-api pod failure
+    chk_pod = mock_state.get("k8s", {}).get("pods", {}).get("checkout-api", {})
+    if chk_pod.get("status") == "CrashLoopBackOff" or chk_pod.get("active_error"):
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 500,
+            "error": "gaierror: [Errno -2] Name does not resolve for database host 'postgres-wrong:5432'",
+            "service": "checkout-api",
+            "cluster": "AWS EKS lear-demo (ap-south-1 Mumbai)",
+            "failing_hop": "PostgreSQL Driver (checkout-api)",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=500, content=err_record)
 
-    elb_url = "http://a4131978a1f9447f29e142dc50cba962-1618812194.ap-south-1.elb.amazonaws.com/api/checkout"
-    payload = json.dumps({
-        "item": body.get("item", "Lear Tensor Node S4"),
-        "price": body.get("price", 49.99),
-        "timestamp": time.time()
-    }).encode("utf-8")
+    # 3. Check GCP Envoy Proxy Saturation
+    gcp_proxy = mock_state.get("gcp", {}).get("instances", {}).get("drufiy-proxy", {})
+    if gcp_proxy.get("marker_present") or gcp_proxy.get("active_error") == "proxy_exhaustion":
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 504,
+            "error": "HTTP 504 Gateway Timeout: Envoy proxy ingress saturated (1024/1024 connections). Connection pool exhausted.",
+            "service": "drufiy-proxy",
+            "cluster": "Google Cloud Platform (us-central1-a)",
+            "failing_hop": "GCP Envoy Ingress",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=504, content=err_record)
 
-    req = urllib.request.Request(elb_url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode())
-            return data
-    except urllib.error.HTTPError as he:
-        err_body = he.read().decode("utf-8", errors="ignore")
-        try:
-            err_json = json.loads(err_body)
-            return JSONResponse(status_code=he.code, content=err_json)
-        except Exception:
-            return JSONResponse(
-                status_code=he.code,
-                content={
-                    "status": "FAILED",
-                    "error": f"HTTP {he.code}: {he.reason}",
-                    "details": err_body[:300] if err_body else "Upstream server failure",
-                    "service": "checkout-api",
-                    "code": he.code
-                }
-            )
-    except Exception as exc:
-        return JSONResponse(
-            status_code=502,
-            content={
-                "status": "FAILED",
-                "error": f"502 Bad Gateway: Upstream checkout-api unreachable ({str(exc)})",
-                "service": "checkout-api",
-                "code": 502
-            }
-        )
+    # 4. Check AWS EC2 payment-api Inode/Disk Full
+    pay_inst = mock_state.get("aws", {}).get("instances", {}).get("payment-api", {})
+    if pay_inst.get("active_error") == "disk_full":
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 503,
+            "error": "HTTP 503 Service Unavailable: ENOSPC /var/log/payment.log full (100% inode capacity). Payment settlement daemon halted.",
+            "service": "payment-api",
+            "cluster": "AWS EC2 ap-south-1 Mumbai",
+            "failing_hop": "AWS Payment Settlement Engine",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=503, content=err_record)
+
+    # 5. Check AWS EC2 Watchdog / Runaway CPU
+    aws_fix = mock_state.get("aws", {}).get("instances", {}).get("prash-test-fixture", {})
+    if aws_fix.get("marker_present") or aws_fix.get("active_error") == "runaway_cpu":
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 504,
+            "error": "HTTP 504 Gateway Timeout: Upstream watchdog thread unresponsive (CPU at 94.6%). Transaction dropped.",
+            "service": "prash-test-fixture",
+            "cluster": "AWS EC2 ap-south-1 Mumbai",
+            "failing_hop": "AWS EC2 Watchdog Fixture",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=504, content=err_record)
+
+    # 6. Check GitHub CI broken
+    gh_repo = mock_state.get("github", {}).get("repos", {}).get("drufiy/checkout-backend", {})
+    if gh_repo.get("ci_status") == "failure" or gh_repo.get("active_error"):
+        err_record = {
+            "order_id": f"ORD-FAIL-{random.randint(10000, 99999)}",
+            "status": "FAILED",
+            "code": 502,
+            "error": "HTTP 502 Bad Gateway: Deployment artifact failed integrity gate in GitHub Actions CI run #143.",
+            "service": "github-ci",
+            "cluster": "GitHub Actions",
+            "failing_hop": "CI/CD Pipeline Gate",
+            "item": item_name,
+            "price": price,
+            "customer": customer,
+            "timestamp": now_iso,
+        }
+        STORE_ORDER_FEED.insert(0, err_record)
+        if len(STORE_ORDER_FEED) > 50:
+            STORE_ORDER_FEED.pop()
+        return JSONResponse(status_code=502, content=err_record)
+
+    # 7. Nominal E2E Checkout Flow: All microservices healthy
+    order_id = f"ORD-2026-{random.randint(100000, 999999)}"
+    success_record = {
+        "status": "COMPLETED",
+        "code": 200,
+        "order_id": order_id,
+        "transaction_id": f"tx_{uuid.uuid4().hex[:12]}",
+        "item": item_name,
+        "price": price,
+        "total": round(price * 1.0825 + 5.99, 2),
+        "timestamp": now_iso,
+        "customer": customer,
+        "payment": {
+            "gateway": "AWS payment-api (ap-south-1)",
+            "status": "authorized",
+            "card_last4": "4242",
+            "auth_code": f"AUTH_{random.randint(100000, 999999)}",
+            "tx_id": f"tx_live_{random.randint(10000, 99999)}"
+        },
+        "shipping": {
+            "carrier": "Standard Express Next-Day",
+            "estimated_days": 1,
+            "tracking_number": f"TRK{random.randint(10000000, 99999999)}"
+        },
+        "database": "Committed to PostgreSQL (ap-south-1:5432)",
+        "routing": {
+            "ingress": "GCP Envoy Ingress (drufiy-proxy us-central1-a)",
+            "compute": "Kubernetes checkout-api (lear-demo)",
+            "persistence": "PostgreSQL Primary (postgres:5432)",
+            "latency_ms": random.randint(16, 26)
+        }
+    }
+    STORE_ORDER_FEED.insert(0, success_record)
+    if len(STORE_ORDER_FEED) > 50:
+        STORE_ORDER_FEED.pop()
+    return success_record
+
+
+@app.get("/api/demo/orders")
+def get_demo_orders():
+    """Returns the recent customer order stream for the storefront and presentation dashboard."""
+    return {
+        "orders": STORE_ORDER_FEED,
+        "total_count": len(STORE_ORDER_FEED),
+        "success_count": sum(1 for o in STORE_ORDER_FEED if o.get("status") == "COMPLETED"),
+        "failure_count": sum(1 for o in STORE_ORDER_FEED if o.get("status") != "COMPLETED"),
+    }
+
+
+@app.get("/api/demo/simulated-traffic/status")
+def get_simulated_traffic_status():
+    global SIMULATED_TRAFFIC_ACTIVE
+    return {"active": SIMULATED_TRAFFIC_ACTIVE}
+
+
+@app.post("/api/demo/simulated-traffic/toggle")
+def toggle_simulated_traffic(body: Optional[Dict[str, Any]] = Body(default={})):
+    global SIMULATED_TRAFFIC_ACTIVE
+    if body and "active" in body:
+        SIMULATED_TRAFFIC_ACTIVE = bool(body["active"])
+    else:
+        SIMULATED_TRAFFIC_ACTIVE = not SIMULATED_TRAFFIC_ACTIVE
+    return {"active": SIMULATED_TRAFFIC_ACTIVE}
 
 
 @app.get("/api/demo/emails/latest", response_class=HTMLResponse)
@@ -3513,6 +3673,9 @@ def approve_incident_endpoint(incident_id: str, request: Request):
     """One-click approval endpoint (from email button or war room)."""
     from prash.incident_manager import approve_incident, get_incident
     from prash.email_service import dispatch_email_alert
+    CHAOS_STATE["active_error"] = None
+    CHAOS_STATE["gateway_timeout"] = False
+    CHAOS_STATE["high_load"] = False
     approve_incident(incident_id)
     inc = get_incident(incident_id)
     dispatch_email_alert(
@@ -3547,6 +3710,35 @@ def deny_incident_endpoint(incident_id: str, request: Request):
             f"<a href='/incident/{incident_id}' style='background:#1E293B;color:#FFFFFF;padding:10px 20px;border-radius:6px;text-decoration:none;'>← Return to War Room</a>"
             f"</body></html>"
         )
+    return {"success": True, "action": "denied", "incident": inc}
+
+
+@app.get("/api/sre/mode")
+def get_sre_mode_endpoint():
+    """Gets the active SRE operation mode: autonomous or supervised."""
+    from prash.incident_manager import get_sre_mode
+    return {"mode": get_sre_mode()}
+
+
+@app.post("/api/sre/mode")
+def set_sre_mode_endpoint(body: Dict[str, Any] = Body(...)):
+    """Sets the active SRE operation mode: autonomous or supervised."""
+    from prash.incident_manager import set_sre_mode, get_all_incidents, execute_remediation
+    mode = body.get("mode", "autonomous")
+    res_mode = set_sre_mode(mode)
+
+    # If switched to autonomous, retroactively heal any active incidents immediately
+    healed_incidents = []
+    if res_mode == "autonomous":
+        for inc in get_all_incidents():
+            if inc.get("status") == "ACTIVE":
+                try:
+                    execute_remediation(inc["incident_id"])
+                    healed_incidents.append(inc["incident_id"])
+                except Exception as e:
+                    logger.error(f"Failed to auto-heal incident {inc.get('incident_id')}: {e}")
+
+    return {"success": True, "mode": res_mode, "auto_healed": healed_incidents}
 
 # ─── Dedicated Multi-Channel Chat Workspace & Audit Log Endpoints ───────
 

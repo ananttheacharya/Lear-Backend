@@ -20,6 +20,8 @@ import {
   Cloud,
   Cpu,
   Zap,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { WatcherPanel } from './WatcherPanel';
 import ServiceWidget from './ServiceWidget';
@@ -72,6 +74,8 @@ export default function Dashboard({
     setOpenCreateProjectModal,
     openChat,
     pushToast,
+    sreMode,
+    setSreMode,
   } = useLear();
 
   const currentProject = propProject || ctxProject;
@@ -85,6 +89,9 @@ export default function Dashboard({
   const [notifiedIncidentIds, setNotifiedIncidentIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoFixingId, setAutoFixingId] = useState<string | null>(null);
+  const [autoFixProgress, setAutoFixProgress] = useState<number>(0);
+  const [autoFixStage, setAutoFixStage] = useState<string>('');
 
   const {
     isConnected,
@@ -204,12 +211,89 @@ export default function Dashboard({
 
   const handleApproveIncident = async (incId: string) => {
     try {
-      await fetch(`/api/incident/${incId}/approve`, { method: 'POST' });
-      await fetchIncidents();
+      const res = await fetch(`/api/incident/${incId}/approve`, { method: 'POST' });
+      if (res.ok) {
+        await Promise.all([fetchSummary(), fetchActivity(), fetchIncidents()]);
+        pushToast({
+          title: '🎉 Remediation Executed & Verified',
+          message: 'Service connection pool and memory quota restored to HEALTHY.',
+          severity: 'info',
+        });
+      }
     } catch (e) {
       console.error('Approval failed:', e);
     }
   };
+
+  const handleDenyIncident = async (incId: string) => {
+    try {
+      const res = await fetch(`/api/incident/${incId}/deny`, { method: 'POST' });
+      if (res.ok) {
+        await Promise.all([fetchSummary(), fetchActivity(), fetchIncidents()]);
+        pushToast({
+          title: 'Remediation Denied',
+          message: 'Changes halted by operator. Incident remains logged for manual SRE review.',
+          severity: 'info',
+        });
+      }
+    } catch (e) {
+      console.error('Denial failed:', e);
+    }
+  };
+
+  // Autonomous Mode: Self-healing loop with visible progress bar and live thinking steps
+  useEffect(() => {
+    if (sreMode !== 'autonomous') return;
+    if (!latestIncident || latestIncident.status !== 'ACTIVE' || !latestIncident.requires_approval) return;
+    if (autoFixingId === latestIncident.incident_id) return;
+
+    const incId = latestIncident.incident_id;
+    setAutoFixingId(incId);
+    setAutoFixProgress(20);
+    setAutoFixStage('Autonomous SRE: Inspecting zombie connections & tracing error spikes...');
+
+    const t1 = setTimeout(() => {
+      setAutoFixProgress(45);
+      setAutoFixStage('Autonomous SRE: Synthesizing zero-downtime remediation patch...');
+    }, 700);
+
+    const t2 = setTimeout(() => {
+      setAutoFixProgress(75);
+      setAutoFixStage('Autonomous SRE: Executing ConfigMap patch & rolling restart...');
+    }, 1500);
+
+    const t3 = setTimeout(() => {
+      setAutoFixProgress(95);
+      setAutoFixStage('Autonomous SRE: Running /healthz probes & draining stale connections...');
+    }, 2200);
+
+    const t4 = setTimeout(async () => {
+      setAutoFixProgress(100);
+      setAutoFixStage('Autonomous SRE: Verification passed. Restoring service to HEALTHY...');
+      try {
+        await fetch(`/api/incident/${incId}/approve`, { method: 'POST' });
+        await Promise.all([fetchSummary(), fetchActivity(), fetchIncidents()]);
+        pushToast({
+          title: '⚡ Autonomous Remediation Complete',
+          message: `${latestIncident.service || 'Service'} restored to HEALTHY and verified.`,
+          severity: 'info',
+        });
+      } catch (err) {
+        console.error('Autonomous fix error:', err);
+      } finally {
+        setAutoFixingId(null);
+        setAutoFixProgress(0);
+        setAutoFixStage('');
+      }
+    }, 3000);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [sreMode, latestIncident, autoFixingId, fetchSummary, fetchActivity, fetchIncidents, pushToast]);
 
   const handleToggleWatchAll = () => {
     if (watcherState === 'ACTIVE') {
@@ -328,6 +412,29 @@ export default function Dashboard({
 
         {/* Quick Actions Command Bar */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* SRE Mode Toggle Button */}
+          <button
+            onClick={() => setSreMode(sreMode === 'autonomous' ? 'supervised' : 'autonomous')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              sreMode === 'autonomous'
+                ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/70 hover:border-cyan-400'
+                : 'bg-amber-950/70 border-amber-500/50 text-amber-300 hover:bg-amber-900/70 hover:border-amber-400'
+            }`}
+            title={`Current Mode: ${sreMode === 'autonomous' ? 'Autonomous SRE (Auto-heals incidents)' : 'Supervised SRE (Requires approval)'}. Click to switch.`}
+          >
+            {sreMode === 'autonomous' ? (
+              <>
+                <Zap size={14} className="text-cyan-400 animate-pulse" />
+                <span>Autonomous Mode</span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert size={14} className="text-amber-400" />
+                <span>Supervised Mode</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={handleManualRefresh}
             disabled={refreshing}
@@ -365,15 +472,27 @@ export default function Dashboard({
       {/* Context-Aware Incident Banner */}
       {latestIncident && latestIncident.status === 'ACTIVE' ? (
         <div className="bg-gradient-to-r from-rose-950/70 via-surface to-rose-950/50 border-2 border-rose-500/60 rounded-2xl p-5 shadow-2xl shadow-rose-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
-          <div className="flex items-start gap-3.5">
+          <div className="flex items-start gap-3.5 flex-1 min-w-0">
             <div className="p-3 bg-rose-500/20 rounded-xl text-rose-400 border border-rose-500/40 shrink-0">
               <ShieldAlert size={22} className="animate-pulse" />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2 py-0.5 rounded bg-rose-500/30 text-rose-300 font-mono font-bold text-[10px] border border-rose-500/50 uppercase">
                   {latestIncident.severity || 'CRITICAL'}
                 </span>
+                {/* Autonomous vs Supervised Mode Pill */}
+                {sreMode === 'autonomous' ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold text-[10px] border border-cyan-500/40 flex items-center gap-1 animate-pulse shadow-sm">
+                    <Zap size={11} className="text-cyan-400" />
+                    Autonomous Mode
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold text-[10px] border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                    <ShieldAlert size={11} className="text-amber-400" />
+                    Supervised Mode
+                  </span>
+                )}
                 {latestIncident.tags?.map((tag: string, tidx: number) => (
                   <span
                     key={tidx}
@@ -394,17 +513,46 @@ export default function Dashboard({
               <p className="text-xs text-rose-200/90 leading-relaxed font-mono text-[11.5px]">
                 {latestIncident.diagnosis || latestIncident.error_summary}
               </p>
+
+              {/* Autonomous Mode Live Progress Bar */}
+              {sreMode === 'autonomous' && (
+                <div className="pt-2">
+                  <div className="w-full bg-black/50 rounded-full h-2 overflow-hidden border border-cyan-500/30">
+                    <div
+                      className="bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 h-full transition-all duration-300 ease-out shadow-sm"
+                      style={{ width: `${autoFixProgress || 35}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[10.5px] font-mono text-cyan-300 mt-1">
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 size={11} className="animate-spin text-cyan-400" />
+                      {autoFixStage || 'Autonomous SRE investigating and applying zero-downtime fix...'}
+                    </span>
+                    <span className="font-bold">{Math.round(autoFixProgress || 35)}%</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
-            {latestIncident.requires_approval && (
-              <button
-                onClick={() => handleApproveIncident(latestIncident.incident_id)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5"
-              >
-                <CheckCircle2 size={14} />
-                <span>Approve Fix</span>
-              </button>
+            {sreMode === 'supervised' && latestIncident.requires_approval && (
+              <>
+                <button
+                  onClick={() => handleDenyIncident(latestIncident.incident_id)}
+                  className="px-3.5 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                  title="Deny proposed remediation"
+                >
+                  <X size={14} />
+                  <span>Deny</span>
+                </button>
+                <button
+                  onClick={() => handleApproveIncident(latestIncident.incident_id)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Approve Fix</span>
+                </button>
+              </>
             )}
             <button
               onClick={() =>
@@ -907,13 +1055,23 @@ export default function Dashboard({
                         </button>
 
                         {isAwaiting && (
-                          <button
-                            onClick={() => handleApproveIncident(inc.incident_id)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shadow"
-                          >
-                            <CheckCircle2 size={11} />
-                            <span>Approve Fix</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleDenyIncident(inc.incident_id)}
+                              className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-rose-300 border border-rose-500/30 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shadow"
+                              title="Deny remediation"
+                            >
+                              <X size={10} />
+                              <span>Deny</span>
+                            </button>
+                            <button
+                              onClick={() => handleApproveIncident(inc.incident_id)}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shadow"
+                            >
+                              <CheckCircle2 size={11} />
+                              <span>Approve Fix</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

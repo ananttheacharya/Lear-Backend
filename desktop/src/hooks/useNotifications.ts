@@ -64,7 +64,10 @@ export function useNotifications() {
     };
 
     setNotifications(prev => [newNotif, ...prev.slice(0, 99)]);
-    setToasts(prev => [newNotif, ...prev.slice(0, 4)]);
+    // Only surface genuine critical error alerts as toasts, never routine telemetry or watchdog updates
+    if (sev === 'error' && (eventType.includes('crash') || eventType.includes('outage') || lastEvent.watch_id?.includes('incident'))) {
+      setToasts(prev => [newNotif, ...prev.slice(0, 3)]);
+    }
   }, [lastEvent]);
 
   const dismissToast = useCallback((id: string) => {

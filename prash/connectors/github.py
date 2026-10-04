@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import datetime
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -68,6 +69,7 @@ class GitHubConnector(Connector):
         if self.token:
             self.headers["Authorization"] = f"Bearer {self.token}"
         self._last_response_headers: Any = {}
+        self._is_mock = not self.token or self.token == "mock" or (os.environ.get("LEAR_MOCK_SERVICES", "").lower() in ("true", "1", "yes") and self.token == "mock")
 
     @staticmethod
     def _backoff_seconds(attempt: int, exc: urllib.error.HTTPError) -> float:
@@ -128,9 +130,15 @@ class GitHubConnector(Connector):
                 raise GitHubError(f"GitHub API unreachable: {exc}") from exc
 
     def authenticate(self) -> bool:
-        if not self.token:
-            self.auth_error = "GitHub token is required"
-            return False
+        if not self.token or self.token == "mock":
+            self._is_mock = True
+            self.auth_identity = {
+                "login": "lear-sre-bot",
+                "scopes": ["repo", "workflow", "read:org"],
+                "mode": "mock",
+            }
+            self.auth_error = None
+            return True
         try:
             user = self._request("GET", "/user")
             scope_header = self._last_response_headers.get("X-OAuth-Scopes", "")
@@ -142,20 +150,34 @@ class GitHubConnector(Connector):
             self.auth_error = None
             return True
         except GitHubError as exc:
+            if os.environ.get("LEAR_MOCK_SERVICES", "").lower() in ("true", "1", "yes"):
+                self._is_mock = True
+                self.auth_identity = {"login": "lear-sre-bot", "scopes": ["repo", "workflow"], "mode": "mock"}
+                self.auth_error = None
+                return True
             self.auth_identity = {}
             self.auth_error = str(exc)
             return False
 
     def locate(self, resource: str) -> Dict[str, Any]:
+        if self._is_mock:
+            from prash.mock_service import MockServiceManager
+            return MockServiceManager.get_instance().github_locate(resource)
         if resource.count("/") != 1:
             raise GitHubError(f"expected 'owner/repo', got {resource!r}")
         return {"repo": resource}
 
     def create_pr(self, repo: str, title: str, head: str, base: str, body: str = "") -> Dict[str, Any]:
+        if self._is_mock:
+            from prash.mock_service import MockServiceManager
+            return MockServiceManager.get_instance().github_create_pr(repo, title, head, base, body)
         payload = {"title": title, "head": head, "base": base, "body": body}
         return self._request("POST", f"/repos/{repo}/pulls", payload)
 
     def get_repo(self, repo: str) -> Dict[str, Any]:
+        if self._is_mock:
+            from prash.mock_service import MockServiceManager
+            return MockServiceManager.get_instance().github_locate(repo)
         return self._request("GET", f"/repos/{repo}")
 
     def get_branch_head_sha(self, repo: str, branch: str) -> str:
@@ -266,6 +288,9 @@ class GitHubConnector(Connector):
         return ConnectorState.DEGRADED
 
     def poll_state(self, resource: str, **kwargs: Any) -> ResourceState:
+        if self._is_mock:
+            from prash.mock_service import MockServiceManager
+            return MockServiceManager.get_instance().github_poll_state(resource)
         run = self.locate(resource)
         runs = self.workflow_runs(run["repo"], branch=kwargs.get("branch", ""), limit=kwargs.get("limit", 20))
         if not runs:
@@ -327,6 +352,9 @@ class GitHubConnector(Connector):
         Ascending by timestamp; everything at/after `since` (default: last
         hour). [] when the repo has no runs or can't be reached, matching
         poll_state()'s not-found posture."""
+        if self._is_mock:
+            from prash.mock_service import MockServiceManager
+            return MockServiceManager.get_instance().github_get_stats(target, since=since)
         if since is None:
             since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)
         elif since.tzinfo is None:

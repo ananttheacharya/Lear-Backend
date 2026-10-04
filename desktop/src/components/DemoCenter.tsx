@@ -12,6 +12,8 @@ import {
   ExternalLink,
   ShieldCheck,
   PlayCircle,
+  GitBranch,
+  ShoppingBag,
 } from 'lucide-react';
 import { useLear } from '../context/LearContext';
 
@@ -26,7 +28,7 @@ interface Scenario {
 
 export default function DemoCenter() {
   const { openChat, pushToast } = useLear();
-  const [activeTab, setActiveTab] = useState<'all' | 'aws' | 'gcp' | 'k8s' | 'obs'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'aws' | 'gcp' | 'k8s' | 'github' | 'obs'>('all');
   const [loading, setLoading] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [status, setStatus] = useState<any>(null);
@@ -89,7 +91,7 @@ export default function DemoCenter() {
 
   const handleAIFix = async () => {
     setFixing(true);
-    addLog('BRAIN', 'Lear AI Copilot triggered: Analyzing multi-cloud telemetry and root cause...', 'brain');
+    addLog('BRAIN', 'Lear AI Copilot triggered: Analyzing multi-cloud telemetry and root cause via LLM inference...', 'brain');
     try {
       const res = await fetch('/api/demo/ai-fix', {
         method: 'POST',
@@ -97,15 +99,20 @@ export default function DemoCenter() {
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (data.actions && data.actions.length > 0) {
-        data.actions.forEach((act: string) => {
-          const type = act.includes('AWS') ? 'aws' : act.includes('GCP') ? 'gcp' : act.includes('Kubernetes') ? 'k8s' : 'fix';
-          addLog('ACTION', act, type);
+      if (data.inference_model) {
+        addLog(data.inference_model.toUpperCase(), `AI Diagnosis: ${data.inference_diagnosis || data.message}`, 'brain');
+      }
+      const actions = data.actions_taken || data.actions || [];
+      if (actions.length > 0) {
+        actions.forEach((act: any) => {
+          const text = typeof act === 'string' ? act : `${act.command} (${act.result})`;
+          const type = typeof act === 'object' && act.connector ? act.connector : 'fix';
+          addLog(typeof act === 'object' && act.connector ? act.connector.toUpperCase() : 'ACTION', text, type);
         });
       }
       addLog('SUCCESS', 'All services and monitors verified healthy. Incidents resolved.', 'fix');
       pushToast({
-        title: 'Lear Auto-Remediation Successful',
+        title: `Lear Auto-Remediation (${data.inference_model || 'DeepSeek'})`,
         message: 'All multi-cloud mock services restored to 100% HEALTHY.',
         severity: 'success',
       });
@@ -175,11 +182,19 @@ export default function DemoCenter() {
       remediation: 'Lear AI patches ConfigMap to postgres and triggers rolling deployment restart.',
     },
     {
+      id: 'github_ci_failure',
+      name: 'GitHub Actions CI Build & Test Failure',
+      connector: 'github',
+      severity: 'high',
+      description: 'Commit c84f1a2 fails checkout-backend test suite, blocking automated production hotfix deployment.',
+      remediation: 'Lear AI parses pytest traces, patches regression, and re-triggers GitHub Actions CI workflow #143.',
+    },
+    {
       id: 'multi_cloud_cascade',
       name: 'Multi-Cloud Cross-Provider Domino Failure',
       connector: 'cascade',
       severity: 'critical',
-      description: 'Simultaneous failure across AWS, GCP, and Kubernetes with Datadog alarm storm.',
+      description: 'Simultaneous failure across AWS, GCP, GitHub, and Kubernetes with Datadog alarm storm.',
       remediation: 'Lear AI coordinates multi-step cross-cloud remediation sequence automatically.',
     },
   ];
@@ -189,6 +204,7 @@ export default function DemoCenter() {
     if (activeTab === 'aws') return s.connector === 'aws';
     if (activeTab === 'gcp') return s.connector === 'gcp';
     if (activeTab === 'k8s') return s.connector === 'k8s';
+    if (activeTab === 'github') return s.connector === 'github';
     if (activeTab === 'obs') return s.connector === 'datadog' || s.connector === 'pagerduty' || s.connector === 'obs';
     return true;
   });
@@ -197,7 +213,9 @@ export default function DemoCenter() {
   const awsFixtureBroken = awsFixture?.marker_present || awsFixture?.active_error;
   const gcpProxy = status?.gcp_instances?.['drufiy-proxy'];
   const gcpProxyBroken = gcpProxy?.marker_present || gcpProxy?.active_error;
-  const hasOutage = awsFixtureBroken || gcpProxyBroken || status?.chaos_state?.active_error;
+  const ghRepo = status?.github_repos?.['drufiy/checkout-backend'];
+  const ghRepoBroken = ghRepo?.ci_status === 'failure' || ghRepo?.active_error;
+  const hasOutage = awsFixtureBroken || gcpProxyBroken || ghRepoBroken || status?.chaos_state?.active_error;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -218,17 +236,24 @@ export default function DemoCenter() {
             </span>
           </div>
           <p className="text-sm text-gray-400 mt-1">
-            Simulate real-world cloud outages on AWS, GCP, and Kubernetes, then witness Lear AI diagnose and autonomously heal them for your demo.
+            Simulate real-world cloud outages on AWS, GCP, GitHub, and Kubernetes, then witness Lear AI diagnose and autonomously heal them for your demo.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => window.open('http://127.0.0.1:8000/store', '_blank')}
+            className="px-3.5 py-2 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-xs font-semibold text-emerald-300 hover:bg-emerald-600/30 transition flex items-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4 text-emerald-400" />
+            Launch Customer Storefront (/store)
+          </button>
+          <button
             onClick={() => window.open('http://127.0.0.1:8000/demo', '_blank')}
             className="px-3.5 py-2 rounded-lg bg-surface border border-surface-border text-xs font-medium text-gray-300 hover:text-white hover:border-gray-600 transition flex items-center gap-2"
           >
             <ExternalLink className="w-4 h-4 text-emerald-400" />
-            Launch Standalone Presentation View
+            Presentation View (/demo)
           </button>
           <button
             onClick={handleResetAll}
@@ -374,6 +399,30 @@ export default function DemoCenter() {
             </div>
             <div className="text-[11px] text-gray-500 mt-1">Datadog Synthetic #316853860</div>
           </div>
+
+          {/* GitHub Actions drufiy/checkout-backend */}
+          <div className={`p-4 rounded-xl border transition ${
+            ghRepoBroken 
+              ? 'bg-rose-950/20 border-rose-500/50' 
+              : 'bg-surface border-surface-border'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <GitBranch className="w-3.5 h-3.5 text-violet-400" />
+                checkout-backend
+              </span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                ghRepoBroken ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                {ghRepoBroken ? 'FAILED' : 'PASSING'}
+              </span>
+            </div>
+            <div className="text-xs text-gray-400 mt-2 font-mono flex justify-between">
+              <span>Commit: <strong className={ghRepoBroken ? 'text-rose-400' : 'text-gray-200'}>c84f1a2</strong></span>
+              <span>main</span>
+            </div>
+            <div className="text-[11px] text-gray-500 mt-1">GitHub Actions CI • Workflow #143</div>
+          </div>
         </div>
       </div>
 
@@ -386,7 +435,7 @@ export default function DemoCenter() {
           </h2>
           {/* Connector filter buttons */}
           <div className="flex items-center gap-1.5">
-            {(['all', 'aws', 'gcp', 'k8s', 'obs'] as const).map(tab => (
+            {(['all', 'aws', 'gcp', 'k8s', 'github', 'obs'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -414,6 +463,7 @@ export default function DemoCenter() {
                     sc.connector === 'aws' ? 'bg-amber-500/20 text-amber-300' :
                     sc.connector === 'gcp' ? 'bg-sky-500/20 text-sky-300' :
                     sc.connector === 'k8s' ? 'bg-purple-500/20 text-purple-300' :
+                    sc.connector === 'github' ? 'bg-violet-500/20 text-violet-300' :
                     sc.connector === 'cascade' ? 'bg-pink-500/20 text-pink-300' :
                     'bg-emerald-500/20 text-emerald-300'
                   }`}>

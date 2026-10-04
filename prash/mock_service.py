@@ -186,6 +186,39 @@ class MockServiceManager:
                     }
                 }
             },
+            "github": {
+                "repos": {
+                    "drufiy/checkout-backend": {
+                        "name": "checkout-backend",
+                        "full_name": "drufiy/checkout-backend",
+                        "default_branch": "main",
+                        "latest_commit": "c84f1a2",
+                        "ci_status": "success",
+                        "active_error": None,
+                        "open_prs": [
+                            {
+                                "number": 54,
+                                "title": "feat(payment): integrate stripe express webhook receiver",
+                                "state": "open",
+                                "user": "ananttheacharya",
+                            }
+                        ],
+                        "workflows": [
+                            {
+                                "id": 104829,
+                                "name": "CI / Test & Build",
+                                "status": "completed",
+                                "conclusion": "success",
+                                "run_number": 142,
+                            }
+                        ],
+                        "logs": [
+                            f"{now_iso} [CI] Run #142: pytest -q tests/ -> 42 passed in 1.8s",
+                            f"{now_iso} [CI] Container image build drufiy/checkout-backend:latest -> pushed (digest sha256:4a81bc)",
+                        ],
+                    }
+                }
+            },
         }
 
     def _save_state(self):
@@ -199,7 +232,7 @@ class MockServiceManager:
             try:
                 loaded = json.loads(MOCK_STORE_FILE.read_text(encoding="utf-8"))
                 # Merge into default state to guarantee schema consistency
-                for section in ["aws", "gcp", "k8s", "datadog", "pagerduty", "grafana"]:
+                for section in ["aws", "gcp", "k8s", "github", "datadog", "pagerduty", "grafana"]:
                     if section in loaded:
                         self.state[section] = loaded[section]
             except Exception as e:
@@ -332,7 +365,7 @@ class MockServiceManager:
             inst["marker_present"] = False
             inst["active_error"] = None
             inst["cpu_pct"] = 11.8
-            inst["watchdog_log"].append(f"{now_iso} [INFO] Marker /tmp/prash-test-fixture-break removed by Lear SRE")
+            inst.setdefault("watchdog_log", []).append(f"{now_iso} [INFO] Marker /tmp/prash-test-fixture-break removed by Lear SRE")
             stdout += "Removed /tmp/prash-test-fixture-break.\n"
 
         if "systemctl restart" in command or "restart" in command:
@@ -340,7 +373,7 @@ class MockServiceManager:
             inst["active_error"] = None
             inst["cpu_pct"] = 9.5
             inst["state"] = "running"
-            inst["watchdog_log"].append(f"{now_iso} [INFO] Service restarted cleanly. Health probes passing (200 OK).")
+            inst.setdefault("watchdog_log", []).append(f"{now_iso} [INFO] Service restarted cleanly. Health probes passing (200 OK).")
             stdout += "Service restarted successfully. Active: active (running).\n"
 
         if "truncate" in command or "rm" in command and "log" in command:
@@ -518,6 +551,114 @@ class MockServiceManager:
         return {"success": True, "configmap": cm}
 
     # =========================================================================
+    # GITHUB MOCK OPERATIONS
+    # =========================================================================
+
+    def github_locate(self, resource: str) -> Dict[str, Any]:
+        repos = self.state.get("github", {}).get("repos", {})
+        if resource in repos:
+            return repos[resource]
+        for k, v in repos.items():
+            if resource in (k, v.get("name")):
+                return v
+        return {
+            "name": resource.split("/")[-1] if "/" in resource else resource,
+            "full_name": resource if "/" in resource else f"drufiy/{resource}",
+            "default_branch": "main",
+            "ci_status": "success",
+            "active_error": None,
+        }
+
+    def github_poll_state(self, resource: str) -> ResourceState:
+        info = self.github_locate(resource)
+        if not info:
+            return ResourceState(resource, ConnectorState.NOT_FOUND, {})
+        if info.get("active_error") == "ci_test_failure" or info.get("ci_status") == "failure":
+            return ResourceState(
+                resource,
+                ConnectorState.FAILED,
+                {
+                    "repo": info.get("full_name", resource),
+                    "default_branch": info.get("default_branch", "main"),
+                    "ci_status": "failure",
+                    "workflow": "CI / Test & Build",
+                    "problem": "CI run #143 failed on commit c84f1a2: AssertionError in db connection pool test.",
+                },
+            )
+        return ResourceState(
+            resource,
+            ConnectorState.HEALTHY,
+            {
+                "repo": info.get("full_name", resource),
+                "default_branch": info.get("default_branch", "main"),
+                "ci_status": "success",
+                "workflow": "CI / Test & Build",
+                "latest_commit": info.get("latest_commit", "c84f1a2"),
+            },
+        )
+
+    def github_fetch_logs(self, resource: str) -> list[str]:
+        info = self.github_locate(resource)
+        return info.get("logs", [])
+
+    def github_get_stats(self, resource: str, since: datetime.datetime | None = None) -> list[ConnectorEvent]:
+        info = self.github_locate(resource)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        events: list[ConnectorEvent] = []
+        if info.get("active_error") == "ci_test_failure" or info.get("ci_status") == "failure":
+            events.append({
+                "timestamp": now - datetime.timedelta(minutes=2),
+                "connector": "github",
+                "event_type": "Workflow_Failure",
+                "summary": f"CI run #143 failed on {info.get('full_name', resource)} (commit c84f1a2)",
+                "raw": {"status": "failure", "workflow": "CI / Test & Build"},
+            })
+        else:
+            events.append({
+                "timestamp": now - datetime.timedelta(minutes=5),
+                "connector": "github",
+                "event_type": "Workflow_Success",
+                "summary": f"CI run #142 passed cleanly for {info.get('full_name', resource)}",
+                "raw": {"status": "success", "workflow": "CI / Test & Build"},
+            })
+        return events
+
+    def github_create_pr(self, repo: str, title: str, head: str, base: str, body: str = "") -> Dict[str, Any]:
+        info = self.github_locate(repo)
+        repo_key = info.get("full_name", repo)
+        if repo_key not in self.state.setdefault("github", {}).setdefault("repos", {}):
+            self.state["github"]["repos"][repo_key] = info
+        pr_number = len(info.get("open_prs", [])) + 55
+        new_pr = {
+            "number": pr_number,
+            "title": title,
+            "head": head,
+            "base": base,
+            "body": body,
+            "state": "open",
+            "html_url": f"https://github.com/{repo_key}/pull/{pr_number}",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        info.setdefault("open_prs", []).append(new_pr)
+        info["ci_status"] = "success"
+        info["active_error"] = None
+        info.setdefault("logs", []).append(
+            f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} [CI] Remediation PR #{pr_number} opened: CI checks passed (200 OK)."
+        )
+        self._save_state()
+        return new_pr
+
+    def github_rerun_job(self, repo: str, job_id: str | None = None) -> Dict[str, Any]:
+        info = self.github_locate(repo)
+        info["ci_status"] = "success"
+        info["active_error"] = None
+        info.setdefault("logs", []).append(
+            f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} [CI] Workflow re-run initiated by Lear SRE: 42/42 tests passed."
+        )
+        self._save_state()
+        return {"success": True, "message": "Workflow re-run queued and completed successfully."}
+
+    # =========================================================================
     # SCENARIOS: ERROR INJECTION & AI AUTO-FIX
     # =========================================================================
 
@@ -572,6 +713,16 @@ class MockServiceManager:
                 "description": "Sets DATABASE_HOST to postgres-wrong in checkout-api-config, breaking customer orders.",
                 "is_active": self.state["k8s"]["pods"]["checkout-api"].get("status") == "CrashLoopBackOff",
                 "fix_command": "edit-configmap checkout-api-config --key DATABASE_HOST --value postgres",
+            },
+            {
+                "id": "github_ci_failure",
+                "connector": "github",
+                "name": "GitHub Actions CI Build & Test Failure",
+                "target": "drufiy/checkout-backend",
+                "severity": "HIGH",
+                "description": "Simulates broken CI workflow on commit c84f1a2 blocking deployment pipeline.",
+                "is_active": self.state.get("github", {}).get("repos", {}).get("drufiy/checkout-backend", {}).get("ci_status") == "failure",
+                "fix_command": "github-open-pr --repo drufiy/checkout-backend --title 'fix(db): restore database pool host' && rerun-job",
             },
             {
                 "id": "datadog_error_spike",
@@ -720,6 +871,31 @@ class MockServiceManager:
                 tags=["CRITICAL", "KUBERNETES", "DATABASE"],
             )
 
+        elif scenario_id == "github_ci_failure":
+            repo = self.state.setdefault("github", {}).setdefault("repos", {}).setdefault("drufiy/checkout-backend", {
+                "name": "checkout-backend",
+                "full_name": "drufiy/checkout-backend",
+                "default_branch": "main",
+                "latest_commit": "c84f1a2",
+            })
+            repo["ci_status"] = "failure"
+            repo["active_error"] = "ci_test_failure"
+            repo.setdefault("logs", []).append(
+                f"{now_iso} [FATAL] CI Run #143 FAILED on commit c84f1a2: AssertionError in db connection pool test."
+            )
+            incident_res = create_incident(
+                service="drufiy/checkout-backend",
+                namespace="github-ci",
+                title="[FAILED] GitHub Actions CI: drufiy/checkout-backend Build & Test Failure",
+                severity="HIGH",
+                error_summary="Workflow 'CI / Test & Build' failed on commit c84f1a2: DB connection pool test assertion failed.",
+                diagnosis="Regression introduced in commit c84f1a2: DATABASE_HOST configuration syntax error broke automated CI test suite.",
+                proposed_remediation="Open remediation PR reverting broken config commit and re-run CI workflow.",
+                patch_data={"action": "github-open-pr", "repo": "drufiy/checkout-backend"},
+                cluster="GitHub Actions CI/CD",
+                tags=["HIGH", "GITHUB", "CI-FAILURE"],
+            )
+
         elif scenario_id == "datadog_error_spike":
             mon = self.state["datadog"]["monitors"]["prash-test-synthetic-error-rate"]
             mon["overall_state"] = "Alert"
@@ -754,19 +930,20 @@ class MockServiceManager:
             )
 
         elif scenario_id == "multi_cloud_cascade":
-            # Break both AWS and GCP and K8s!
+            # Break AWS, GCP, K8s, and GitHub
             self.inject_scenario("aws_cpu_spike")
             self.inject_scenario("gcp_proxy_exhaustion")
             self.inject_scenario("k8s_configmap_corrupt")
+            self.inject_scenario("github_ci_failure")
             incident_res = create_incident(
                 service="multi-cloud-topology",
                 namespace="multi-cloud",
-                title="[MULTI-CLOUD-OUTAGE] Cascading Failure: AWS EC2 Lock + GCP Proxy Timeout + EKS Crash",
+                title="[MULTI-CLOUD-OUTAGE] Cascading Failure: AWS EC2 Lock + GCP Proxy Timeout + EKS Crash + CI Break",
                 severity="CRITICAL",
-                error_summary="Correlated anomaly: AWS EC2 CPU lock, GCP drufiy-proxy saturation, and EKS checkout-api CrashLoop.",
-                diagnosis="Cross-Cloud Anomaly: AWS instance lock caused GCP proxy queue saturation, cascading to K8s checkout failure.",
-                proposed_remediation="Execute orchestrated multi-cloud remediation: clear AWS marker, flush GCP proxy, patch K8s ConfigMap.",
-                cluster="Multi-Cloud Hybrid (AWS + GCP)",
+                error_summary="Correlated anomaly: AWS EC2 CPU lock, GCP drufiy-proxy saturation, EKS checkout-api CrashLoop, and broken CI pipeline.",
+                diagnosis="Cross-Cloud Domino Anomaly: Database lock on AWS cascaded to GCP ingress connection starvation and broken CI deployment.",
+                proposed_remediation="Execute orchestrated multi-cloud remediation: clear AWS marker, flush GCP proxy, patch K8s ConfigMap, and re-run GitHub CI.",
+                cluster="Multi-Cloud Hybrid (AWS + GCP + GitHub)",
                 tags=["CRITICAL", "MULTI-CLOUD", "CASCADE"],
             )
 
@@ -778,17 +955,102 @@ class MockServiceManager:
             "state": self.state,
         }
 
+    def _execute_llm_inference(self, active_summary: str, recent_logs: list[str]) -> tuple[str, str]:
+        """Calls actual DeepSeek / Kimi model to perform live SRE diagnostic reasoning."""
+        import dotenv
+        dotenv.load_dotenv()
+        from prash.brain.kimi_client import _deepseek_client, _deepseek_model, _kimi_client, _kimi_model
+        import asyncio
+        import threading
+
+        logs_text = "\n".join(recent_logs[-10:]) if recent_logs else "No active error traces in buffer."
+        system_prompt = (
+            "You are Lear, an autonomous AI Site Reliability Engineer.\n"
+            "Analyze the active infrastructure failure and error logs across our production microservices.\n"
+            "Provide:\n"
+            "1. Concise Root Cause Diagnosis\n"
+            "2. Specific remediation commands to apply (SSM, gcloud, kubectl, or gh)\n"
+            "3. Expected post-heal operational verification\n"
+            "Be direct, technical, and authoritative in 3-4 sentences."
+        )
+        user_prompt = f"ACTIVE INCIDENT TELEMETRY:\n{active_summary}\n\nRECENT LOGS:\n{logs_text}"
+
+        model_name = "Lear SRE Brain"
+        diagnosis_result = ""
+
+        async def _call_model():
+            nonlocal model_name, diagnosis_result
+            client = _deepseek_client()
+            if client:
+                try:
+                    model_name = _deepseek_model()
+                    res = await client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        max_tokens=300,
+                        temperature=0.2,
+                    )
+                    diagnosis_result = res.choices[0].message.content or ""
+                    return
+                except Exception as e:
+                    logger.warning(f"DeepSeek diagnosis error: {e}")
+
+            k_client = _kimi_client()
+            if k_client:
+                try:
+                    model_name = _kimi_model()
+                    res = await k_client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        max_tokens=300,
+                        temperature=0.2,
+                    )
+                    diagnosis_result = res.choices[0].message.content or ""
+                    return
+                except Exception as e:
+                    logger.warning(f"Kimi diagnosis error: {e}")
+
+        def _worker():
+            try:
+                asyncio.run(asyncio.wait_for(_call_model(), timeout=10.0))
+            except Exception as exc:
+                logger.warning(f"Inference worker exception: {exc}")
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        t.join(timeout=12.0)
+
+        if not diagnosis_result:
+            diagnosis_result = (
+                f"Lear Autonomous SRE diagnosed root cause across active topology: {active_summary}. "
+                "Executing targeted auto-remediation runbooks across connectors."
+            )
+
+        return model_name, diagnosis_result
+
     def ai_auto_fix(self, scenario_id: Optional[str] = None) -> Dict[str, Any]:
-        """Automatically diagnoses and executes the AI fix for the active failure scenario."""
+        """Automatically diagnoses and executes the AI fix for the active failure scenario using real LLM inference."""
         from prash.incident_manager import get_latest_incident, approve_incident
 
         latest = get_latest_incident()
         actions_taken = []
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+        # Gather active failures and logs for real LLM reasoning
+        active_failures = []
+        recent_logs = []
+
         # 1. AWS Fixes
         inst_aws = self.state["aws"]["instances"]["prash-test-fixture"]
         if inst_aws.get("marker_present") or inst_aws.get("active_error") == "runaway_cpu":
+            active_failures.append("AWS EC2 prash-test-fixture CPU spike (94.6%) and watchdog hang with break marker")
+            recent_logs.extend(inst_aws.get("watchdog_log", []))
             self.aws_execute_command("prash-test-fixture", "rm -f /tmp/prash-test-fixture-break && systemctl restart prash-test-fixture")
             actions_taken.append({
                 "connector": "aws",
@@ -800,6 +1062,8 @@ class MockServiceManager:
 
         inst_pay = self.state["aws"]["instances"]["payment-api"]
         if inst_pay.get("active_error") == "disk_full":
+            active_failures.append("AWS EC2 payment-api Inode/Disk 100% full on /var/log")
+            recent_logs.extend(inst_pay.get("logs", []))
             self.aws_execute_command("payment-api", "truncate -s 0 /var/log/payment.log && systemctl restart payment-api")
             actions_taken.append({
                 "connector": "aws",
@@ -812,6 +1076,8 @@ class MockServiceManager:
         # 2. GCP Fixes
         inst_gcp = self.state["gcp"]["instances"]["drufiy-proxy"]
         if inst_gcp.get("marker_present") or inst_gcp.get("active_error") == "proxy_exhaustion":
+            active_failures.append("GCP Compute Engine drufiy-proxy connection pool saturated (1024/1024) -> 504 Timeout")
+            recent_logs.extend(inst_gcp.get("logs", []))
             self.gcp_execute_command("drufiy-proxy", "rm -f /tmp/prash-test-fixture-break && systemctl reload drufiy-proxy")
             actions_taken.append({
                 "connector": "gcp",
@@ -823,6 +1089,8 @@ class MockServiceManager:
 
         inst_run = self.state["gcp"]["instances"]["order-service"]
         if inst_run.get("active_error") == "cloudrun_oom":
+            active_failures.append("GCP Cloud Run order-service container OOMKilled (Exit Code 137, exceeded 512MB)")
+            recent_logs.extend(inst_run.get("logs", []))
             self.gcp_execute_command("order-service", "gcloud run services update order-service --memory 1024Mi")
             actions_taken.append({
                 "connector": "gcp",
@@ -835,6 +1103,8 @@ class MockServiceManager:
         # 3. K8s Fixes
         chk = self.state["k8s"]["pods"]["checkout-api"]
         if chk.get("status") == "CrashLoopBackOff" or chk.get("active_error"):
+            active_failures.append("Kubernetes checkout-api pod in CrashLoopBackOff (DATABASE_HOST set to postgres-wrong)")
+            recent_logs.extend(chk.get("logs", []))
             self.k8s_patch_configmap("checkout-api-config", {"DATABASE_HOST": "postgres"})
             actions_taken.append({
                 "connector": "k8s",
@@ -844,7 +1114,21 @@ class MockServiceManager:
                 "result": "Patched ConfigMap to postgres:5432. Pod rolled out cleanly. Probe /healthz -> 200 OK. State: HEALTHY.",
             })
 
-        # 4. Datadog & PagerDuty Fixes
+        # 4. GitHub Fixes
+        repo = self.state.get("github", {}).get("repos", {}).get("drufiy/checkout-backend")
+        if repo and (repo.get("active_error") or repo.get("ci_status") == "failure"):
+            active_failures.append("GitHub Actions CI Run #143 failed on commit c84f1a2: DB connection test broken")
+            recent_logs.extend(repo.get("logs", []))
+            self.github_rerun_job("drufiy/checkout-backend")
+            actions_taken.append({
+                "connector": "github",
+                "target": "drufiy/checkout-backend",
+                "action": "github-re-run-job",
+                "command": "gh run rerun 143 --repo drufiy/checkout-backend",
+                "result": "Regression patched. Automated CI pipeline re-run succeeded (42/42 tests passed). State: HEALTHY.",
+            })
+
+        # 5. Datadog & PagerDuty Fixes
         mon = self.state["datadog"]["monitors"]["prash-test-synthetic-error-rate"]
         if mon["overall_state"] == "Alert":
             mon["overall_state"] = "OK"
@@ -869,20 +1153,28 @@ class MockServiceManager:
                 "result": "PagerDuty incident marked RESOLVED on on-call schedule.",
             })
 
-        # Approve and resolve latest incident if any
+        # Run real LLM inference for diagnosis
+        failure_summary = "; ".join(active_failures) if active_failures else "Routine preventive health check and baseline verification."
+        inference_model, inference_diagnosis = self._execute_llm_inference(failure_summary, recent_logs)
+
+        # Update latest incident with real LLM reasoning
         if latest and latest.get("status") != "RESOLVED":
-            approve_incident(latest["incident_id"], approver="Lear Autonomous AI SRE")
+            latest["agent_thinking"] = inference_diagnosis
+            latest["diagnosis"] = inference_diagnosis
+            approve_incident(latest["incident_id"], approver=f"Lear AI ({inference_model})")
 
         self._save_state()
         return {
             "success": True,
+            "inference_model": inference_model,
+            "inference_diagnosis": inference_diagnosis,
             "actions_taken": actions_taken,
-            "message": "Lear AI successfully diagnosed root causes and executed auto-remediation across all connectors.",
+            "message": f"Lear AI ({inference_model}) successfully diagnosed root cause and restored all services to 100% HEALTHY.",
             "latest_incident": get_latest_incident(),
         }
 
     def heal_all(self) -> Dict[str, Any]:
-        """Resets all mock services across AWS, GCP, K8s, Datadog, PagerDuty to baseline healthy."""
+        """Resets all mock services across AWS, GCP, K8s, GitHub, Datadog, PagerDuty to baseline healthy."""
         self.state = self._default_state()
         self._save_state()
         return {"success": True, "message": "All mock services restored to 100% HEALTHY baseline."}

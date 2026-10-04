@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Trash2, ArrowRight, ShieldAlert, RefreshCw } from 'lucide-react';
+import { X, Send, Sparkles, Trash2, ArrowRight, ShieldAlert, RefreshCw, Maximize2, Minimize2, ExternalLink, Zap } from 'lucide-react';
 import ChatMessage, { ChatMessageData } from './ChatMessage';
-import { ChatContextType } from '../context/LearContext';
+import { ChatContextType, useLear } from '../context/LearContext';
 
 interface ChatbotProps {
   isOpen: boolean;
@@ -11,6 +11,8 @@ interface ChatbotProps {
 }
 
 export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProps) {
+  const { setActiveTab, sreMode } = useLear();
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ChatContextType | null>(
@@ -302,6 +304,13 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
     // 3. If in an incident session on Dashboard, route message directly to the incident war room brain
     if (currentCtx?.incidentId) {
       try {
+        const lower = targetText.toLowerCase();
+        if (lower.includes('approve') || lower.includes('deploy')) {
+          await fetch(`/api/incident/${currentCtx.incidentId}/approve`, { method: 'POST' }).catch(() => {});
+        } else if (lower.includes('deny') || lower.includes('halt') || lower.includes('reject')) {
+          await fetch(`/api/incident/${currentCtx.incidentId}/deny`, { method: 'POST' }).catch(() => {});
+        }
+
         const chatRes = await fetch(`/api/incident/${currentCtx.incidentId}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -579,7 +588,9 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="lear-chat-drawer fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border-subtle z-50 flex flex-col shadow-2xl"
+            className={`lear-chat-drawer fixed right-0 top-0 bottom-0 ${
+              isFullScreen ? 'w-full max-w-full' : 'w-full max-w-lg'
+            } bg-background border-l border-border-subtle z-50 flex flex-col shadow-2xl transition-all duration-300`}
           >
             {/* Header */}
             <div className="p-4 border-b border-border-subtle bg-surface/40 flex items-center justify-between">
@@ -607,7 +618,25 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    setActiveTab('chat');
+                    onClose();
+                  }}
+                  title="Open in full Lear Chat workspace"
+                  className="p-1.5 text-gray-400 hover:text-accent rounded-lg hover:bg-surface transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                >
+                  <ExternalLink size={16} />
+                  <span className="hidden sm:inline text-[11px] font-semibold">Open in Lear Chat</span>
+                </button>
+                <button
+                  onClick={() => setIsFullScreen(!isFullScreen)}
+                  title={isFullScreen ? "Restore window size" : "Expand to full screen"}
+                  className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-surface transition-colors cursor-pointer"
+                >
+                  {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
                 <button
                   onClick={handleClearChat}
                   title="Reload context / reset"
@@ -623,6 +652,35 @@ export default function Chatbot({ isOpen, onClose, serviceContext }: ChatbotProp
                 </button>
               </div>
             </div>
+
+            {/* SRE Mode Pill & Autonomous Loading Bar for Active Incident */}
+            {activeContext?.incidentId && (
+              <div className="px-4 py-2.5 bg-neutral-950/90 border-b border-border-subtle flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    sreMode === 'autonomous'
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                      : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                  }`}>
+                    <Zap size={12} className={sreMode === 'autonomous' ? 'text-emerald-400 animate-pulse' : 'text-amber-400'} />
+                    {sreMode === 'autonomous' ? 'Autonomous Mode' : 'Supervised Mode (Human Authorization Required)'}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    {activeContext.incidentId}
+                  </span>
+                </div>
+                {sreMode === 'autonomous' && (
+                  <div className="space-y-1 mt-0.5">
+                    <div className="w-full bg-neutral-900 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 h-1.5 rounded-full animate-pulse w-full" />
+                    </div>
+                    <p className="text-[10px] text-emerald-300/90 flex items-center gap-1 font-mono">
+                      <span>⚡ Agent retroactively diagnosing & auto-merging runbook fixes...</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Live Omni-Channel Status Bar */}
             <div className="px-4 py-1.5 bg-neutral-950 border-b border-border-subtle/40 flex items-center justify-between text-[10px]">
